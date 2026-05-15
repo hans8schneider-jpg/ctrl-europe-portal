@@ -685,7 +685,7 @@ function Tasks({ profile, tasks, setTasks, activeBucket }) {
     <div className="fade-in">
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
         <div className="sec" style={{ marginBottom: 0 }}>ÚKOLY {activeBucket && `· ${activeBucket}`}</div>
-        {canAdd && !profile.layer === 'pozorovatel' && (
+        {canAdd && profile.layer !== 'pozorovatel' && (
           <button className="btn btn-p" onClick={() => setShowAdd(v => !v)}>+ PŘIDAT ÚKOL</button>
         )}
       </div>
