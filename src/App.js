@@ -423,14 +423,59 @@ const css = `
   .tab.active { color: ${G.accent}; border-bottom-color: ${G.accent}; }
 
   @media (max-width: 900px) {
-    .sidebar { width: 52px; }
-    .sidebar-logo-glitch, .sidebar-logo-sub, .sidebar-user, .nav-item span, .nav-section, .sidebar-bottom span { display: none; }
-    .main { margin-left: 52px; }
-    .nav-item { justify-content: center; padding: 14px; }
-    .stats-grid { grid-template-columns: 1fr 1fr; }
-    .bucket-grid { grid-template-columns: 1fr 1fr; }
+    .sidebar { display: none; }
+    .main { margin-left: 0; padding-bottom: 70px; }
+    .stats-grid { grid-template-columns: 1fr 1fr; gap: 8px; }
+    .bucket-grid { grid-template-columns: 1fr 1fr; gap: 8px; }
     .profile-grid { grid-template-columns: 1fr; }
+    .content { padding: 16px; }
+    .topbar { padding: 0 16px; height: 50px; }
+    .stat-val { font-size: 26px; }
+    .stat-card { padding: 14px; }
+    .bottom-nav { display: flex; }
+    .chat-wrap { height: calc(100vh - 130px); }
   }
+
+  .bottom-nav {
+    display: none; position: fixed; bottom: 0; left: 0; right: 0; height: 62px;
+    background: #0f0f1a; border-top: 1px solid #1a1a30; z-index: 300;
+    padding: 0 4px; align-items: center; justify-content: space-around;
+  }
+  .bottom-nav-item {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 3px; padding: 8px 10px; cursor: pointer; flex: 1;
+    color: #7878a0; transition: all 0.15s; position: relative; border-radius: 8px;
+  }
+  .bottom-nav-item.active { color: #2A6BFF; background: rgba(42,107,255,0.1); }
+  .bottom-nav-item:active { transform: scale(0.9); }
+  .bottom-nav-icon { font-size: 20px; line-height: 1; }
+  .bottom-nav-label { font-family: JetBrains Mono, monospace; font-size: 8px; letter-spacing: 1px; text-transform: uppercase; }
+  .bottom-nav-badge {
+    position: absolute; top: 5px; right: 8px;
+    background: #ff3366; color: #fff; font-size: 8px; min-width: 14px; height: 14px;
+    display: flex; align-items: center; justify-content: center; border-radius: 7px;
+  }
+  .bucket-drawer {
+    display: none; position: fixed; inset: 0; z-index: 400;
+    background: rgba(0,0,0,0.75); backdrop-filter: blur(4px);
+  }
+  .bucket-drawer.open { display: flex; align-items: flex-end; animation: fadeIn 0.2s ease; }
+  .bucket-drawer-content {
+    background: #0f0f1a; border-top: 1px solid #1a1a30;
+    width: 100%; max-height: 78vh; overflow-y: auto; padding: 16px 16px 32px;
+    border-radius: 16px 16px 0 0; animation: slideUp 0.3s cubic-bezier(0.4,0,0.2,1);
+  }
+  @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+  .drawer-handle { width: 36px; height: 4px; background: #222240; border-radius: 2px; margin: 0 auto 16px; }
+  .drawer-bucket-item {
+    display: flex; align-items: center; gap: 12px; padding: 14px 12px;
+    cursor: pointer; border-radius: 8px; transition: background 0.15s; margin-bottom: 2px;
+  }
+  .drawer-bucket-item:active { background: rgba(42,107,255,0.1); }
+  .drawer-bucket-dot { width: 10px; height: 10px; border-radius: 2px; flex-shrink: 0; }
+  .drawer-bucket-name { font-size: 15px; font-weight: 600; }
+  .drawer-bucket-count { font-family: JetBrains Mono, monospace; font-size: 10px; color: #7878a0; margin-left: auto; }
+  .drawer-section { font-family: JetBrains Mono, monospace; font-size: 9px; letter-spacing: 3px; color: #3a3a60; text-transform: uppercase; padding: 12px 12px 4px; }
 `
 
 // ── HELPERS ───────────────────────────────────────────────────────────────────
@@ -1386,6 +1431,90 @@ export default function App() {
             {activeBucket && (
               <BucketView profile={profile} bucket={activeBucket} tasks={tasks} setTasks={setTasks} members={members} />
             )}
+          </div>
+        </div>
+
+        {/* BOTTOM NAV — mobile */}
+        <MobileBottomNav
+          page={page} activeBucket={activeBucket}
+          setPage={setPage} setActiveBucket={setActiveBucket}
+          accessibleBuckets={accessibleBuckets}
+          tasks={tasks} profile={profile}
+          myOpenCount={myOpenCount} admin={admin}
+          handleSelectBucket={handleSelectBucket}
+        />
+      </div>
+    </>
+  )
+}
+
+function MobileBottomNav({ page, activeBucket, setPage, setActiveBucket, accessibleBuckets, tasks, profile, myOpenCount, admin, handleSelectBucket }) {
+  const [drawerOpen, setDrawerOpen] = useState(false)
+
+  const navItems = [
+    { id: 'dashboard', icon: '⊞', label: 'Hlavní' },
+    { id: 'buckets', icon: '◈', label: 'Buňky' },
+    { id: 'profile', icon: '◉', label: 'Profil' },
+    ...(admin ? [{ id: 'admin', icon: '⚙', label: 'Admin' }] : []),
+  ]
+
+  const teamBuckets = accessibleBuckets.filter(b => ['PR a komunikace','Sociální sítě','Podcast','Research','Grafika','Video','Mezinárodní','Eventy'].includes(b))
+  const specialBuckets = accessibleBuckets.filter(b => ['Rada zástupců','Předsednictvo'].includes(b))
+
+  const BUCKET_COLORS = {
+    'PR a komunikace': '#2A6BFF', 'Sociální sítě': '#ffb800', 'Podcast': '#b44fff',
+    'Research': '#00c9ff', 'Grafika': '#ff6b35', 'Video': '#ff3366',
+    'Mezinárodní': '#00e5a0', 'Eventy': '#00e5a0', 'Rada zástupců': '#ffb800', 'Předsednictvo': '#b44fff',
+  }
+
+  return (
+    <>
+      <div className="bottom-nav">
+        {navItems.map(n => (
+          <div key={n.id}
+            className={"bottom-nav-item" + (page === n.id && !activeBucket ? ' active' : '')}
+            onClick={() => { setPage(n.id); setActiveBucket(null); setDrawerOpen(false) }}>
+            {n.id === 'dashboard' && myOpenCount > 0 && <span className="bottom-nav-badge">{myOpenCount}</span>}
+            <span className="bottom-nav-icon">{n.icon}</span>
+            <span className="bottom-nav-label">{n.label}</span>
+          </div>
+        ))}
+        <div className={"bottom-nav-item" + (drawerOpen || activeBucket ? ' active' : '')}
+          onClick={() => setDrawerOpen(v => !v)}>
+          <span className="bottom-nav-icon">☰</span>
+          <span className="bottom-nav-label">Menu</span>
+        </div>
+      </div>
+
+      <div className={"bucket-drawer" + (drawerOpen ? ' open' : '')} onClick={() => setDrawerOpen(false)}>
+        <div className="bucket-drawer-content" onClick={e => e.stopPropagation()}>
+          <div className="drawer-handle" />
+          <div className="drawer-section">Týmové buňky</div>
+          {teamBuckets.map(b => {
+            const bucketTasks = tasks.filter(t => (t.bucket_target === b) && !t.done)
+            return (
+              <div key={b} className="drawer-bucket-item" onClick={() => { handleSelectBucket(b); setDrawerOpen(false) }}>
+                <div className="drawer-bucket-dot" style={{ background: BUCKET_COLORS[b] || '#2A6BFF' }} />
+                <span className="drawer-bucket-name">{b}</span>
+                {bucketTasks.length > 0 && <span className="drawer-bucket-count">{bucketTasks.length} úkolů</span>}
+              </div>
+            )
+          })}
+          {specialBuckets.length > 0 && (
+            <>
+              <div className="drawer-section">Orgány</div>
+              {specialBuckets.map(b => (
+                <div key={b} className="drawer-bucket-item" onClick={() => { handleSelectBucket(b); setDrawerOpen(false) }}>
+                  <div className="drawer-bucket-dot" style={{ background: BUCKET_COLORS[b] || '#2A6BFF' }} />
+                  <span className="drawer-bucket-name">{b}</span>
+                </div>
+              ))}
+            </>
+          )}
+          <div style={{ paddingTop: 12 }}>
+            <div className="drawer-bucket-item" onClick={() => { setDrawerOpen(false) }} style={{ opacity: 0.5 }}>
+              <span style={{ fontSize: 13, color: '#7878a0' }}>Zavřít</span>
+            </div>
           </div>
         </div>
       </div>
