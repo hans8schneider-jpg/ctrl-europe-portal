@@ -1104,6 +1104,8 @@ function Profile({ profile, members }) {
             ))}
           </div>
 
+          <PasswordChange />
+
           <div style={{ background: G.panel, border: `1px solid ${G.border}`, padding: 20 }}>
             <div className="sec">CTRL EUROPE TEAM</div>
             <div style={{ fontSize: 13, color: G.text2, lineHeight: 1.7 }}>
@@ -1115,6 +1117,66 @@ function Profile({ profile, members }) {
           </div>
         </div>
       </div>
+    </div>
+  )
+}
+
+function PasswordChange() {
+  const [open, setOpen] = useState(false)
+  const [oldPass, setOldPass] = useState('')
+  const [newPass, setNewPass] = useState('')
+  const [confirm, setConfirm] = useState('')
+  const [msg, setMsg] = useState('')
+  const [error, setError] = useState('')
+  const [loading, setLoading] = useState(false)
+
+  const handleChange = async () => {
+    setMsg(''); setError('')
+    if (!oldPass || !newPass || !confirm) return setError('Vyplň všechna pole')
+    if (newPass.length < 6) return setError('Nové heslo musí mít alespoň 6 znaků')
+    if (newPass !== confirm) return setError('Hesla se neshodují')
+    setLoading(true)
+    const { data: { session } } = await supabase.auth.getSession()
+    const { error: signInErr } = await supabase.auth.signInWithPassword({
+      email: session.user.email, password: oldPass
+    })
+    if (signInErr) { setError('Původní heslo je nesprávné'); setLoading(false); return }
+    const { error: updateErr } = await supabase.auth.updateUser({ password: newPass })
+    if (updateErr) setError('Chyba: ' + updateErr.message)
+    else { setMsg('Heslo bylo úspěšně změněno!'); setOldPass(''); setNewPass(''); setConfirm(''); setOpen(false) }
+    setLoading(false)
+  }
+
+  return (
+    <div style={{ background: G.panel, border: `1px solid ${G.border}`, padding: 20 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div className="sec" style={{ marginBottom: 0 }}>ZMĚNIT HESLO</div>
+        <button className="btn btn-g" style={{ fontSize: 10, padding: '6px 12px' }} onClick={() => { setOpen(v => !v); setMsg(''); setError('') }}>
+          {open ? 'ZRUŠIT' : 'ZMĚNIT'}
+        </button>
+      </div>
+      {msg && <div style={{ color: G.success, fontFamily: 'JetBrains Mono', fontSize: 11, marginTop: 10 }}>✓ {msg}</div>}
+      {open && (
+        <div style={{ marginTop: 14, animation: 'fadeIn 0.2s ease' }}>
+          <div style={{ marginBottom: 10 }}>
+            <div style={{ fontFamily: 'JetBrains Mono', fontSize: 9, letterSpacing: 2, textTransform: 'uppercase', color: G.text2, marginBottom: 6 }}>Původní heslo</div>
+            <input className="fi" type="password" placeholder="Původní heslo..." value={oldPass} onChange={e => setOldPass(e.target.value)} style={{ width: '100%' }} />
+          </div>
+          <div style={{ marginBottom: 10 }}>
+            <div style={{ fontFamily: 'JetBrains Mono', fontSize: 9, letterSpacing: 2, textTransform: 'uppercase', color: G.text2, marginBottom: 6 }}>Nové heslo</div>
+            <input className="fi" type="password" placeholder="Nové heslo (min. 6 znaků)..." value={newPass} onChange={e => setNewPass(e.target.value)} style={{ width: '100%' }} />
+          </div>
+          <div style={{ marginBottom: 14 }}>
+            <div style={{ fontFamily: 'JetBrains Mono', fontSize: 9, letterSpacing: 2, textTransform: 'uppercase', color: G.text2, marginBottom: 6 }}>Potvrdit nové heslo</div>
+            <input className="fi" type="password" placeholder="Zopakuj nové heslo..." value={confirm} onChange={e => setConfirm(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && handleChange()} style={{ width: '100%' }} />
+          </div>
+          {error && <div style={{ color: G.danger, fontFamily: 'JetBrains Mono', fontSize: 11, marginBottom: 10 }}>// {error}</div>}
+          <button className="btn btn-p" onClick={handleChange} disabled={loading}>
+            {loading ? 'MĚNÍM...' : 'ULOŽIT NOVÉ HESLO'}
+          </button>
+        </div>
+      )}
     </div>
   )
 }
