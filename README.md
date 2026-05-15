@@ -38,4 +38,4 @@ VALUES ('UUID-sem', 'Jméno Příjmení', 'Role v týmu', 'Buňka', 'core');
 - Video
 - Mezinárodní
 - Eventy
-- all (vidí vše — pro admin)
+- all (vidí vše — pro admin)  
