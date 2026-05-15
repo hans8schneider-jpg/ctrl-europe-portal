@@ -440,6 +440,10 @@ const css = `
     display: none; position: fixed; bottom: 0; left: 0; right: 0; height: 62px;
     background: #0f0f1a; border-top: 1px solid #1a1a30; z-index: 300;
     padding: 0 4px; align-items: center; justify-content: space-around;
+    safe-area-inset-bottom: env(safe-area-inset-bottom);
+  }
+  @media (max-width: 900px) {
+    .bottom-nav { display: flex !important; }
   }
   .bottom-nav-item {
     display: flex; flex-direction: column; align-items: center; justify-content: center;
