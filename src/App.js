@@ -819,14 +819,18 @@ function Chat({ profile, activeBucket }) {
 
   useEffect(() => {
     loadMessages()
-    const channel = supabase.channel(`chat-${bucket}`)
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, payload => {
-        if (payload.new.bucket === bucket) {
-          if (payload.new.pinned) setPinnedMsg(payload.new)
-          else setMessages(prev => [...prev, payload.new])
-        }
-      }).subscribe()
-    return () => supabase.removeChannel(channel)
+    const channel = supabase.channel(`chat-${bucket}`, { config: { broadcast: { self: true } } })
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages', filter: `bucket=eq.${bucket}` }, payload => {
+        if (payload.new.pinned) setPinnedMsg(payload.new)
+        else setMessages(prev => [...prev, payload.new])
+      })
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'messages', filter: `bucket=eq.${bucket}` }, () => {
+        loadMessages()
+      })
+      .subscribe()
+    // Fallback polling every 5s in case realtime fails
+    const poll = setInterval(loadMessages, 5000)
+    return () => { supabase.removeChannel(channel); clearInterval(poll) }
   }, [loadMessages, bucket])
 
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [messages])
@@ -896,8 +900,121 @@ function Chat({ profile, activeBucket }) {
   )
 }
 
+
+function MemberModal({ member, tasks, onClose }) {
+  if (!member) return null
+  const memberTasks = tasks.filter(t => t.created_by === member.id || t.completed_by === member.id)
+  const openTasks = memberTasks.filter(t => !t.done)
+  const doneTasks = memberTasks.filter(t => t.done)
+
+  const lastSeen = member.last_seen
+    ? (() => {
+        const d = new Date(member.last_seen)
+        const diff = Math.floor((Date.now() - d) / 60000)
+        if (diff < 2) return 'právě online'
+        if (diff < 60) return `před ${diff} min`
+        if (diff < 1440) return `před ${Math.floor(diff/60)} hod`
+        return `před ${Math.floor(diff/1440)} dny`
+      })()
+    : 'neznámo'
+
+  const roleLabel = ROLE_LABELS[member.layer] || member.layer
+
+  return (
+    <div style={{
+      position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)',
+      zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center',
+      padding: 16, backdropFilter: 'blur(4px)'
+    }} onClick={onClose}>
+      <div style={{
+        background: G.surface, border: `1px solid ${G.border}`,
+        borderRadius: 4, width: '100%', maxWidth: 480,
+        maxHeight: '85vh', overflowY: 'auto'
+      }} onClick={e => e.stopPropagation()}>
+
+        {/* Header */}
+        <div style={{ padding: '28px 28px 20px', borderBottom: `1px solid ${G.border}` }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+            <div style={{
+              width: 64, height: 64, borderRadius: '50%',
+              background: getBucketColor(member.bucket) + '22',
+              border: `2px solid ${getBucketColor(member.bucket)}44`,
+              color: getBucketColor(member.bucket),
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: 22, fontWeight: 800, fontFamily: 'JetBrains Mono, monospace',
+              flexShrink: 0
+            }}>
+              {getInitials(member.name)}
+            </div>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 18, fontWeight: 800, marginBottom: 2 }}>{member.name}</div>
+              <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 10, color: G.accent, letterSpacing: 2, textTransform: 'uppercase', marginBottom: 4 }}>
+                {roleLabel}
+              </div>
+              <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 10, color: G.text2, letterSpacing: 1 }}>
+                {member.bucket}{member.secondary_bucket ? ` · ${member.secondary_bucket}` : ''}
+              </div>
+            </div>
+            <button onClick={onClose} style={{ background: 'none', border: 'none', color: G.text2, fontSize: 20, cursor: 'pointer', padding: 4 }}>×</button>
+          </div>
+        </div>
+
+        {/* Stats */}
+        <div style={{ padding: '16px 28px', borderBottom: `1px solid ${G.border}`, display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ fontSize: 22, fontWeight: 800, color: G.accent }}>{openTasks.length}</div>
+            <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 9, color: G.text2, letterSpacing: 1, textTransform: 'uppercase', marginTop: 2 }}>otevřené úkoly</div>
+          </div>
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ fontSize: 22, fontWeight: 800 }}>{doneTasks.length}</div>
+            <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 9, color: G.text2, letterSpacing: 1, textTransform: 'uppercase', marginTop: 2 }}>splněno</div>
+          </div>
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ fontSize: 11, fontWeight: 600, color: member.last_seen && (Date.now() - new Date(member.last_seen)) < 300000 ? '#4ade80' : G.text2, marginTop: 4 }}>
+              {lastSeen}
+            </div>
+            <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 9, color: G.text2, letterSpacing: 1, textTransform: 'uppercase', marginTop: 2 }}>naposledy online</div>
+          </div>
+        </div>
+
+        {/* Open tasks */}
+        {openTasks.length > 0 && (
+          <div style={{ padding: '16px 28px', borderBottom: `1px solid ${G.border}` }}>
+            <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 10, color: G.text2, letterSpacing: 2, textTransform: 'uppercase', marginBottom: 10 }}>
+              Otevřené úkoly ({openTasks.length})
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {openTasks.slice(0, 5).map(t => (
+                <div key={t.id} style={{ fontSize: 13, padding: '8px 12px', background: G.bg2, borderLeft: `2px solid ${G.accent}`, borderRadius: 2 }}>
+                  {t.text}
+                  {t.due_date && <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 10, color: G.text2, marginLeft: 8 }}>{t.due_date}</span>}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {openTasks.length === 0 && (
+          <div style={{ padding: '16px 28px', borderBottom: `1px solid ${G.border}` }}>
+            <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 10, color: G.text2, letterSpacing: 1, textAlign: 'center' }}>
+              Žádné otevřené úkoly
+            </div>
+          </div>
+        )}
+
+        <div style={{ padding: '12px 28px' }}>
+          <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 9, color: G.text2, letterSpacing: 1 }}>
+            Člen od: {member.created_at ? new Date(member.created_at).toLocaleDateString('cs-CZ') : 'neznámo'}
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function BucketView({ profile, bucket, tasks, setTasks, members }) {
   const [view, setView] = useState('tasks')
+  const [selectedMember, setSelectedMember] = useState(null)
   const bucketMembers = members.filter(m => m.bucket === bucket || m.secondary_bucket === bucket)
   const color = getBucketColor(bucket)
 
@@ -913,10 +1030,12 @@ function BucketView({ profile, bucket, tasks, setTasks, members }) {
         </div>
         <div style={{ display: 'flex', gap: 4, marginLeft: 'auto', flexWrap: 'wrap' }}>
           {bucketMembers.slice(0, 6).map(m => (
-            <div key={m.id} className="bucket-member-av" style={{ background: color + '22', border: `1px solid ${color}44`, color }}>
+            <div key={m.id} className="bucket-member-av" style={{ background: color + '22', border: `1px solid ${color}44`, color, cursor: 'pointer' }}
+              onClick={() => setSelectedMember(m)} title={m.name}>
               {getInitials(m.name)}
             </div>
           ))}
+          {selectedMember && <MemberModal member={selectedMember} tasks={tasks} onClose={() => setSelectedMember(null)} />}
         </div>
       </div>
 
@@ -933,6 +1052,7 @@ function BucketView({ profile, bucket, tasks, setTasks, members }) {
 
 function BucketOverview({ profile, tasks, members, onSelectBucket }) {
   const accessible = getAccessibleBuckets(profile)
+  const [selectedMember, setSelectedMember] = useState(null)
 
   return (
     <div className="fade-in">
@@ -959,7 +1079,8 @@ function BucketOverview({ profile, tasks, members, onSelectBucket }) {
               <div className="bucket-count">{bucketTasks.length} otevřených úkolů · {bucketMembers.length} členů</div>
               <div className="bucket-members">
                 {bucketMembers.slice(0, 5).map(m => (
-                  <div key={m.id} className="bucket-member-av" style={{ background: color + '20', border: `1px solid ${color}40`, color }}>
+                  <div key={m.id} className="bucket-member-av" style={{ background: color + '20', border: `1px solid ${color}40`, color, cursor: 'pointer' }}
+                    onClick={e => { e.stopPropagation(); setSelectedMember(m); }} title={m.name}>
                     {getInitials(m.name)}
                   </div>
                 ))}
@@ -968,6 +1089,7 @@ function BucketOverview({ profile, tasks, members, onSelectBucket }) {
           )
         })}
       </div>
+      {selectedMember && <MemberModal member={selectedMember} tasks={tasks} onClose={() => setSelectedMember(null)} />}
     </div>
   )
 }
@@ -1154,6 +1276,35 @@ function Profile({ profile, members }) {
           </div>
 
           <PasswordChange />
+
+          <div style={{ background: G.panel, border: `1px solid ${G.border}`, padding: 20 }}>
+            <div className="sec">DOKUMENTY SPOLKU</div>
+            <div style={{ fontSize: 12, color: G.text2, marginBottom: 14, lineHeight: 1.6 }}>
+              Oficiální dokumenty CTRL Europe Team, z. s. Kliknutím stáhneš dokument.
+            </div>
+            {[
+              { name: 'Stanovy spolku', desc: 'Kompletní stanovy CTRL Europe Team, z. s.', icon: '📋' },
+              { name: 'Zakládací listina', desc: 'Zakládací listina spolku', icon: '📄' },
+              { name: 'GDPR — Zásady zpracování osobních údajů', desc: 'Jak zpracováváme tvé osobní údaje', icon: '🔒' },
+              { name: 'Členský závazek', desc: 'Vzor členského závazku spolku', icon: '✍️' },
+            ].map(doc => (
+              <div key={doc.name} style={{
+                display: 'flex', alignItems: 'center', gap: 12,
+                padding: '12px 0', borderBottom: `1px solid ${G.border}`,
+                cursor: 'default', opacity: 0.7
+              }}>
+                <span style={{ fontSize: 18 }}>{doc.icon}</span>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 2 }}>{doc.name}</div>
+                  <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 10, color: G.text2, letterSpacing: 0.5 }}>{doc.desc}</div>
+                </div>
+                <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 9, color: G.text2, letterSpacing: 1 }}>BRZY</span>
+              </div>
+            ))}
+            <div style={{ marginTop: 12, fontFamily: 'JetBrains Mono, monospace', fontSize: 10, color: G.text2, letterSpacing: 1 }}>
+              Dokumenty budou k dispozici po finálním podpisu a zápisu spolku.
+            </div>
+          </div>
 
           <div style={{ background: G.panel, border: `1px solid ${G.border}`, padding: 20 }}>
             <div className="sec">CTRL EUROPE TEAM</div>
