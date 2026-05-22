@@ -15,7 +15,16 @@ export function DashboardPage() {
   const [newEvent, setNewEvent] = useState({ title: '', description: '', date: '', time: '', type: 'event' })
   const admin = isAdmin(profile.layer)
 
-  const myOpenTasks = tasks.filter(t => !t.done && (t.bucket_target === 'all' || t.bucket_target === profile.bucket))
+  const isCellScoped = ['vedouci', 'clen'].includes(profile.layer)
+  const profileBuckets = [profile.bucket, profile.secondary_bucket].filter(Boolean)
+  const taskInProfileBuckets = (t) => profileBuckets.includes(t.bucket_target)
+  const memberInProfileBuckets = (m) =>
+    profileBuckets.includes(m.bucket) || profileBuckets.includes(m.secondary_bucket)
+
+  const relevantTasks = isCellScoped ? tasks.filter(taskInProfileBuckets) : tasks
+  const myOpenTasks = isCellScoped
+    ? relevantTasks.filter(t => !t.done)
+    : tasks.filter(t => !t.done && (t.bucket_target === 'all' || t.bucket_target === profile.bucket))
 
   const deleteNews = async (id) => {
     await supabase.from('news').delete().eq('id', id)
@@ -35,9 +44,9 @@ export function DashboardPage() {
     window.location.reload()
   }
 
-  const totalDone = tasks.filter(t => t.done).length
-  const totalOpen = tasks.filter(t => !t.done).length
-  const activeMembers = members.filter(m => {
+  const totalDone = relevantTasks.filter(t => t.done).length
+  const totalOpen = relevantTasks.filter(t => !t.done).length
+  const activeMembers = (isCellScoped ? members.filter(memberInProfileBuckets) : members).filter(m => {
     if (!m.last_seen) return false
     return new Date() - new Date(m.last_seen) < 86400000 * 7
   }).length
