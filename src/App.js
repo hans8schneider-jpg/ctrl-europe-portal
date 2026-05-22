@@ -1278,7 +1278,7 @@ function MobileBottomNav({ page, activeBucket, setPage, setActiveBucket, accessi
         </div>
       </div>
 
-      <div className={cn('hidden fixed inset-0 z-[400] backdrop-blur-sm animate-fade-in bg-[rgba(0,0,0,0.75)]', drawerOpen && 'flex items-end')} onClick={() => setDrawerOpen(false)}>
+      <div className={cn('fixed inset-0 z-[400] backdrop-blur-sm bg-[rgba(0,0,0,0.75)]', drawerOpen ? 'flex items-end animate-fade-in' : 'hidden')} onClick={() => setDrawerOpen(false)}>
         <div className="bg-ctrl-panel border-t border-ctrl-border w-full max-h-[78vh] overflow-y-auto px-4 pt-4 pb-8 rounded-t-2xl animate-slide-up" onClick={e => e.stopPropagation()}>
           <div className="w-9 h-1 bg-ctrl-border2 rounded-sm mx-auto mb-4" />
           <div className="font-mono text-[9px] tracking-[3px] text-ctrl-text3 uppercase py-3 px-3 pb-1">Týmové buňky</div>
