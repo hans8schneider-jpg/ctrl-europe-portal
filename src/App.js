@@ -1,15 +1,37 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { supabase } from './supabase'
+const cn = (...parts) => parts.filter(Boolean).join(' ')
 
-// ── DESIGN TOKENS ─────────────────────────────────────────────────────────────
-const G = {
-  bg: '#050508', bg2: '#08080f', bg3: '#0d0d18',
-  panel: '#0f0f1a', panel2: '#141428', panel3: '#191932',
-  border: '#1a1a30', border2: '#222240',
-  accent: '#2A6BFF', accent2: '#1a4fd4', accentDim: 'rgba(42,107,255,0.12)',
-  text: '#eaeaf5', text2: '#7878a0', text3: '#3a3a60',
-  danger: '#ff3366', success: '#00e5a0', warning: '#ffb800', info: '#00c9ff',
+const tagCls = {
+  podcast: cn('font-mono text-[9px] py-0.5 px-2 tracking-wide uppercase shrink-0', 'bg-[rgba(180,79,255,0.12)] text-[#b44fff]'),
+  research: cn('font-mono text-[9px] py-0.5 px-2 tracking-wide uppercase shrink-0', 'bg-[rgba(0,229,160,0.1)] text-ctrl-success'),
+  social: cn('font-mono text-[9px] py-0.5 px-2 tracking-wide uppercase shrink-0', 'bg-[rgba(255,184,0,0.1)] text-ctrl-warning'),
+  event: cn('font-mono text-[9px] py-0.5 px-2 tracking-wide uppercase shrink-0', 'bg-[rgba(255,51,102,0.1)] text-ctrl-danger'),
+  other: cn('font-mono text-[9px] py-0.5 px-2 tracking-wide uppercase shrink-0', 'bg-ctrl-panel2 text-ctrl-text2'),
 }
+
+const eventTypeCls = {
+  event: cn('font-mono text-[9px] py-0.5 px-[7px] tracking-wide uppercase shrink-0', 'bg-[rgba(42,107,255,0.12)] text-ctrl-accent'),
+  deadline: cn('font-mono text-[9px] py-0.5 px-[7px] tracking-wide uppercase shrink-0', 'bg-[rgba(255,51,102,0.1)] text-ctrl-danger'),
+  meeting: cn('font-mono text-[9px] py-0.5 px-[7px] tracking-wide uppercase shrink-0', 'bg-[rgba(0,229,160,0.1)] text-ctrl-success'),
+}
+
+const lastSeenCls = (kind) => ({
+  good: 'text-ctrl-success',
+  ok: 'text-ctrl-warning',
+  bad: 'text-ctrl-danger',
+  never: 'text-ctrl-text3',
+}[kind] || 'text-ctrl-text3')
+
+function Sec({ children, className = '' }) {
+  return (
+    <div className={cn('font-mono text-[9px] tracking-[3px] uppercase text-ctrl-text2 mb-3.5 flex items-center gap-2.5', className)}>
+      <span className="shrink-0">{children}</span>
+      <div className="flex-1 h-px bg-ctrl-border" />
+    </div>
+  )
+}
+
 
 const ROLE_HIERARCHY = {
   admin: 6,
@@ -29,15 +51,6 @@ const ROLE_LABELS = {
   pozorovatel: 'Pozorovatel',
 }
 
-const ROLE_COLORS = {
-  admin: G.danger,
-  predsednictvo: '#b44fff',
-  zastupce_predsednictva: '#7744ff',
-  vedouci: G.accent,
-  clen: G.success,
-  pozorovatel: G.text2,
-}
-
 const TEAM_BUCKETS = [
   'PR a komunikace', 'Sociální sítě', 'Podcast', 'Research',
   'Grafika', 'Video', 'Mezinárodní', 'Eventy',
@@ -45,21 +58,86 @@ const TEAM_BUCKETS = [
 const SPECIAL_BUCKETS = ['Rada zástupců', 'Předsednictvo']
 const ALL_BUCKETS = [...TEAM_BUCKETS, ...SPECIAL_BUCKETS]
 
-const BUCKET_COLORS = {
-  'PR a komunikace': '#2A6BFF',
-  'Sociální sítě': '#ffb800',
-  'Podcast': '#b44fff',
-  'Research': '#00c9ff',
-  'Grafika': '#ff6b35',
-  'Video': '#ff3366',
-  'Mezinárodní': '#00e5a0',
-  'Eventy': '#00e5a0',
-  'Rada zástupců': '#ffb800',
-  'Předsednictvo': '#b44fff',
-}
-
-const getBucketColor = (b) => BUCKET_COLORS[b] || G.accent
 const getInitials = (n) => n ? n.split(' ').map(x => x[0]).join('').slice(0, 2).toUpperCase() : '??'
+
+const newsDotCls = (type) => ({
+  warn: 'bg-ctrl-warning',
+  ok: 'bg-ctrl-success',
+  accent: 'bg-ctrl-accent',
+}[type] || 'bg-ctrl-accent')
+
+const ROLE_BADGE_CLS = {
+  admin: 'bg-[rgba(255,51,102,0.12)] text-ctrl-danger',
+  predsednictvo: 'bg-[rgba(180,79,255,0.12)] text-[#b44fff]',
+  zastupce_predsednictva: 'bg-[rgba(119,68,255,0.12)] text-[#7744ff]',
+  vedouci: 'bg-[rgba(42,107,255,0.12)] text-ctrl-accent',
+  clen: 'bg-[rgba(0,229,160,0.12)] text-ctrl-success',
+  pozorovatel: 'bg-ctrl-panel2 text-ctrl-text2',
+}
+const roleBadgeCls = (layer) => ROLE_BADGE_CLS[layer] || ROLE_BADGE_CLS.clen
+
+const BUCKET_AV_CLS = {
+  'PR a komunikace': 'bg-[rgba(42,107,255,0.15)] border border-[rgba(42,107,255,0.31)] text-[#2A6BFF]',
+  'Sociální sítě': 'bg-[rgba(255,184,0,0.15)] border border-[rgba(255,184,0,0.31)] text-[#ffb800]',
+  'Podcast': 'bg-[rgba(180,79,255,0.15)] border border-[rgba(180,79,255,0.31)] text-[#b44fff]',
+  'Research': 'bg-[rgba(0,201,255,0.15)] border border-[rgba(0,201,255,0.31)] text-[#00c9ff]',
+  'Grafika': 'bg-[rgba(255,107,53,0.15)] border border-[rgba(255,107,53,0.31)] text-[#ff6b35]',
+  'Video': 'bg-[rgba(255,51,102,0.15)] border border-[rgba(255,51,102,0.31)] text-ctrl-danger',
+  'Mezinárodní': 'bg-[rgba(0,229,160,0.15)] border border-[rgba(0,229,160,0.31)] text-ctrl-success',
+  'Eventy': 'bg-[rgba(0,229,160,0.15)] border border-[rgba(0,229,160,0.31)] text-ctrl-success',
+  'Rada zástupců': 'bg-[rgba(255,184,0,0.15)] border border-[rgba(255,184,0,0.31)] text-[#ffb800]',
+  'Předsednictvo': 'bg-[rgba(180,79,255,0.15)] border border-[rgba(180,79,255,0.31)] text-[#b44fff]',
+}
+const bucketAvCls = (bucket) => BUCKET_AV_CLS[bucket] || 'bg-[rgba(42,107,255,0.15)] border border-[rgba(42,107,255,0.31)] text-ctrl-accent'
+
+const BUCKET_DOT_CLS = {
+  'PR a komunikace': 'bg-[#2A6BFF]',
+  'Sociální sítě': 'bg-[#ffb800]',
+  'Podcast': 'bg-[#b44fff]',
+  'Research': 'bg-[#00c9ff]',
+  'Grafika': 'bg-[#ff6b35]',
+  'Video': 'bg-[#ff3366]',
+  'Mezinárodní': 'bg-[#00e5a0]',
+  'Eventy': 'bg-[#00e5a0]',
+  'Rada zástupců': 'bg-[#ffb800]',
+  'Předsednictvo': 'bg-[#b44fff]',
+}
+const bucketDotCls = (bucket) => BUCKET_DOT_CLS[bucket] || 'bg-ctrl-accent'
+const bucketBarCls = (bucket) => BUCKET_DOT_CLS[bucket] || 'bg-ctrl-accent'
+
+const BUCKET_MEMBER_AV_CLS = {
+  'PR a komunikace': 'bg-[rgba(42,107,255,0.13)] border border-[rgba(42,107,255,0.27)] text-[#2A6BFF]',
+  'Sociální sítě': 'bg-[rgba(255,184,0,0.13)] border border-[rgba(255,184,0,0.27)] text-[#ffb800]',
+  'Podcast': 'bg-[rgba(180,79,255,0.13)] border border-[rgba(180,79,255,0.27)] text-[#b44fff]',
+  'Research': 'bg-[rgba(0,201,255,0.13)] border border-[rgba(0,201,255,0.27)] text-[#00c9ff]',
+  'Grafika': 'bg-[rgba(255,107,53,0.13)] border border-[rgba(255,107,53,0.27)] text-[#ff6b35]',
+  'Video': 'bg-[rgba(255,51,102,0.13)] border border-[rgba(255,51,102,0.27)] text-[#ff3366]',
+  'Mezinárodní': 'bg-[rgba(0,229,160,0.13)] border border-[rgba(0,229,160,0.27)] text-[#00e5a0]',
+  'Eventy': 'bg-[rgba(0,229,160,0.13)] border border-[rgba(0,229,160,0.27)] text-[#00e5a0]',
+  'Rada zástupců': 'bg-[rgba(255,184,0,0.13)] border border-[rgba(255,184,0,0.27)] text-[#ffb800]',
+  'Předsednictvo': 'bg-[rgba(180,79,255,0.13)] border border-[rgba(180,79,255,0.27)] text-[#b44fff]',
+}
+const bucketMemberAvCls = (bucket) => BUCKET_MEMBER_AV_CLS[bucket] || 'bg-[rgba(42,107,255,0.13)] border border-[rgba(42,107,255,0.27)] text-ctrl-accent'
+
+const BUCKET_ORGAN_BADGE_CLS = {
+  'PR a komunikace': 'bg-[rgba(42,107,255,0.13)] text-[#2A6BFF]',
+  'Sociální sítě': 'bg-[rgba(255,184,0,0.13)] text-[#ffb800]',
+  'Podcast': 'bg-[rgba(180,79,255,0.13)] text-[#b44fff]',
+  'Research': 'bg-[rgba(0,201,255,0.13)] text-[#00c9ff]',
+  'Grafika': 'bg-[rgba(255,107,53,0.13)] text-[#ff6b35]',
+  'Video': 'bg-[rgba(255,51,102,0.13)] text-[#ff3366]',
+  'Mezinárodní': 'bg-[rgba(0,229,160,0.13)] text-[#00e5a0]',
+  'Eventy': 'bg-[rgba(0,229,160,0.13)] text-[#00e5a0]',
+  'Rada zástupců': 'bg-[rgba(255,184,0,0.13)] text-[#ffb800]',
+  'Předsednictvo': 'bg-[rgba(180,79,255,0.13)] text-[#b44fff]',
+}
+const bucketOrganBadgeCls = (bucket) => BUCKET_ORGAN_BADGE_CLS[bucket] || 'bg-[rgba(42,107,255,0.13)] text-ctrl-accent'
+
+const STATUS_OPT_CLS = {
+  active: 'text-ctrl-success border-ctrl-success',
+  away: 'text-ctrl-warning border-ctrl-warning',
+  needs_help: 'text-ctrl-danger border-ctrl-danger',
+}
 
 const formatTime = (ts) => {
   if (!ts) return 'Nikdy'
@@ -113,23 +191,25 @@ function LoginPage() {
   }
 
   return (
-    <div className="login-wrap">
-      <div className="login-box">
-        <div className="login-logo">[<span>CTRL</span>]</div>
-        <div className="login-sub" style={{ fontFamily: 'JetBrains Mono, monospace' }}>Members Portal · CEE Youth Platform</div>
-        <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 10, color: G.text2, marginBottom: 32, letterSpacing: 1, fontStyle: 'italic' }}>
+    <div className="min-h-screen flex items-center justify-center p-5 bg-ctrl-bg [background:radial-gradient(ellipse_100%_80%_at_50%_-10%,rgba(42,107,255,0.15)_0%,transparent_60%),#050508]">
+      <div className="w-full max-w-[400px] bg-ctrl-panel border border-ctrl-border py-12 px-10 relative overflow-hidden animate-fade-in">
+        <div className="absolute top-0 left-0 right-0 h-0.5 animate-glow bg-gradient-to-r from-transparent via-ctrl-accent to-transparent" aria-hidden />
+        <div className="absolute bottom-5 right-5 font-mono text-[10px] text-ctrl-text3 tracking-[2px] opacity-50 pointer-events-none" aria-hidden>[CTRL]</div>
+        <div className="font-mono text-[44px] font-bold tracking-[-2px] mb-1">[<span className="text-ctrl-accent [text-shadow:0_0_20px_rgba(42,107,255,0.5)]">CTRL</span>]</div>
+        <div className="font-mono text-[10px] tracking-[3px] text-ctrl-text2 uppercase mb-10">Members Portal · CEE Youth Platform</div>
+        <div className="font-mono text-[10px] text-ctrl-text2 mb-8 tracking-wide italic">
           "Take control before someone else does."
         </div>
-        <div className="login-label">Email</div>
-        <input className="login-input" type="email" value={email} onChange={e => setEmail(e.target.value)}
+        <div className="font-mono text-[10px] tracking-[2px] uppercase text-ctrl-text2 mb-2">Email</div>
+        <input className="w-full bg-ctrl-bg2 border border-ctrl-border text-ctrl-text py-[13px] px-4 text-sm font-sans outline-none transition-all duration-[250ms] mb-5 block focus:border-ctrl-accent focus:shadow-[0_0_0_3px_rgba(42,107,255,0.1)]" type="email" value={email} onChange={e => setEmail(e.target.value)}
           onKeyDown={e => e.key === 'Enter' && handleLogin()} placeholder="tvuj@email.cz" autoComplete="email" />
-        <div className="login-label">Heslo</div>
-        <input className="login-input" type="password" value={password} onChange={e => setPassword(e.target.value)}
+        <div className="font-mono text-[10px] tracking-[2px] uppercase text-ctrl-text2 mb-2">Heslo</div>
+        <input className="w-full bg-ctrl-bg2 border border-ctrl-border text-ctrl-text py-[13px] px-4 text-sm font-sans outline-none transition-all duration-[250ms] mb-5 block focus:border-ctrl-accent focus:shadow-[0_0_0_3px_rgba(42,107,255,0.1)]" type="password" value={password} onChange={e => setPassword(e.target.value)}
           onKeyDown={e => e.key === 'Enter' && handleLogin()} placeholder="••••••••" autoComplete="current-password" />
-        <button className="login-btn" onClick={handleLogin} disabled={loading}>
+        <button className="w-full bg-ctrl-accent text-white border-0 py-[15px] text-[13px] font-bold tracking-[2px] uppercase cursor-pointer font-sans transition-all duration-200 mt-1 hover:bg-ctrl-accent2 disabled:opacity-50 disabled:cursor-not-allowed" onClick={handleLogin} disabled={loading}>
           {loading ? 'PŘIHLAŠUJI...' : 'PŘIHLÁSIT SE →'}
         </button>
-        {error && <div className="login-err">{error}</div>}
+        {error && <div className="text-ctrl-danger text-[11px] mt-2.5 font-mono">{error}</div>}
       </div>
     </div>
   )
@@ -170,121 +250,121 @@ function Dashboard({ profile, tasks, news, setNews, events, members }) {
   }).length
 
   return (
-    <div className="fade-in">
-      <div style={{ marginBottom: 24 }}>
-        <div style={{ fontSize: 22, fontWeight: 800, marginBottom: 4 }}>
+    <div className="animate-fade-in">
+      <div className="mb-6">
+        <div className="text-[22px] font-extrabold mb-1">
           Vítej zpět, {profile.name.split(' ')[0]} 👋
         </div>
-        <div className="motto">"Take control before someone else does."</div>
+        <div className="font-mono text-[11px] text-ctrl-accent tracking-[2px] opacity-60 mt-1 max-[900px]:text-[10px]">"Take control before someone else does."</div>
       </div>
 
-      <div className="stats-grid">
-        <div className="stat-card" style={{ borderBottom: `2px solid ${G.accent}` }}>
-          <div className="stat-val" style={{ color: G.accent }}>{totalOpen}</div>
-          <div className="stat-label">Otevřené úkoly</div>
+      <div className="grid grid-cols-4 gap-3 mb-6 max-[900px]:grid-cols-2 max-[900px]:gap-2">
+        <div className="p-5 bg-ctrl-panel border border-ctrl-border border-b-2 border-b-ctrl-accent relative overflow-hidden transition-all duration-[250ms] hover:border-ctrl-border2 hover:-translate-y-px max-[900px]:p-3.5">
+          <div className="font-mono text-4xl font-bold leading-none mb-1 max-[900px]:text-[26px] text-ctrl-accent">{totalOpen}</div>
+          <div className="font-mono text-[9px] tracking-[2px] uppercase text-ctrl-text2">Otevřené úkoly</div>
         </div>
-        <div className="stat-card" style={{ borderBottom: `2px solid ${G.success}` }}>
-          <div className="stat-val" style={{ color: G.success }}>{totalDone}</div>
-          <div className="stat-label">Splněné úkoly</div>
+        <div className="p-5 bg-ctrl-panel border border-ctrl-border border-b-2 border-b-ctrl-success relative overflow-hidden transition-all duration-[250ms] hover:border-ctrl-border2 hover:-translate-y-px max-[900px]:p-3.5">
+          <div className="font-mono text-4xl font-bold leading-none mb-1 max-[900px]:text-[26px] text-ctrl-success">{totalDone}</div>
+          <div className="font-mono text-[9px] tracking-[2px] uppercase text-ctrl-text2">Splněné úkoly</div>
         </div>
-        <div className="stat-card" style={{ borderBottom: `2px solid ${G.warning}` }}>
-          <div className="stat-val" style={{ color: G.warning }}>{myOpenTasks.length}</div>
-          <div className="stat-label">Moje úkoly</div>
+        <div className="p-5 bg-ctrl-panel border border-ctrl-border border-b-2 border-b-ctrl-warning relative overflow-hidden transition-all duration-[250ms] hover:border-ctrl-border2 hover:-translate-y-px max-[900px]:p-3.5">
+          <div className="font-mono text-4xl font-bold leading-none mb-1 max-[900px]:text-[26px] text-ctrl-warning">{myOpenTasks.length}</div>
+          <div className="font-mono text-[9px] tracking-[2px] uppercase text-ctrl-text2">Moje úkoly</div>
         </div>
-        <div className="stat-card" style={{ borderBottom: `2px solid ${G.info}` }}>
-          <div className="stat-val" style={{ color: G.info }}>{activeMembers}</div>
-          <div className="stat-label">Aktivní tento týden</div>
+        <div className="p-5 bg-ctrl-panel border border-ctrl-border border-b-2 border-b-ctrl-info relative overflow-hidden transition-all duration-[250ms] hover:border-ctrl-border2 hover:-translate-y-px max-[900px]:p-3.5">
+          <div className="font-mono text-4xl font-bold leading-none mb-1 max-[900px]:text-[26px] text-ctrl-info">{activeMembers}</div>
+          <div className="font-mono text-[9px] tracking-[2px] uppercase text-ctrl-text2">Aktivní tento týden</div>
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
-        <div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
-            <div className="sec" style={{ marginBottom: 0 }}>OZNÁMENÍ</div>
+      <div className="grid grid-cols-2 gap-5 max-[900px]:grid-cols-1 max-[900px]:gap-8">
+        <section className="min-w-0">
+          <div className="flex justify-between items-center gap-3 mb-3.5 max-[900px]:mb-4">
+            <Sec className="!mb-0">OZNÁMENÍ</Sec>
             {admin && (
-              <div style={{ display: 'flex', gap: 8 }}>
-                <button className="btn btn-p" style={{ fontSize: 10, padding: '6px 12px' }} onClick={() => setShowAddNews(v => !v)}>+ PŘIDAT</button>
-              </div>
+              <button className="border-0 py-[9px] px-[18px] text-[11px] font-bold tracking-[2px] uppercase cursor-pointer font-sans transition-all duration-200 bg-ctrl-accent text-white hover:bg-ctrl-accent2 hover:-translate-y-px text-[10px] py-1.5 px-3 shrink-0" onClick={() => setShowAddNews(v => !v)}>+ PŘIDAT</button>
             )}
           </div>
 
           {showAddNews && (
-            <div className="form-wrap">
-              <div className="form-row">
-                <input className="fi" placeholder="Nadpis..." value={newNews.title} onChange={e => setNewNews(p => ({ ...p, title: e.target.value }))} />
-                <input className="fi" placeholder="Tag..." value={newNews.tag} onChange={e => setNewNews(p => ({ ...p, tag: e.target.value }))} style={{ maxWidth: 100 }} />
-                <select className="fs" value={newNews.type} onChange={e => setNewNews(p => ({ ...p, type: e.target.value }))}>
+            <div className="bg-ctrl-panel border border-ctrl-accent p-4 mb-3.5 animate-fade-in">
+              <div className="flex gap-2.5 mb-2.5 flex-wrap">
+                <input className="flex-1 min-w-[140px] bg-ctrl-bg2 border border-ctrl-border text-ctrl-text py-[9px] px-3 text-[13px] font-sans outline-none transition-all duration-200 focus:border-ctrl-accent focus:shadow-[0_0_0_2px_rgba(42,107,255,0.1)]" placeholder="Nadpis..." value={newNews.title} onChange={e => setNewNews(p => ({ ...p, title: e.target.value }))} />
+                <input className="flex-1 min-w-[140px] max-w-[100px] bg-ctrl-bg2 border border-ctrl-border text-ctrl-text py-[9px] px-3 text-[13px] font-sans outline-none transition-all duration-200 focus:border-ctrl-accent focus:shadow-[0_0_0_2px_rgba(42,107,255,0.1)]" placeholder="Tag..." value={newNews.tag} onChange={e => setNewNews(p => ({ ...p, tag: e.target.value }))} />
+                <select className="bg-ctrl-bg2 border border-ctrl-border text-ctrl-text2 py-[9px] px-3 text-xs font-sans outline-none cursor-pointer transition-colors duration-200 focus:border-ctrl-accent" value={newNews.type} onChange={e => setNewNews(p => ({ ...p, type: e.target.value }))}>
                   <option value="accent">Modrá</option>
                   <option value="warn">Žlutá</option>
                   <option value="ok">Zelená</option>
                 </select>
               </div>
-              <div className="form-row">
-                <input className="fi" placeholder="Text oznámení..." value={newNews.body} onChange={e => setNewNews(p => ({ ...p, body: e.target.value }))} />
+              <div className="flex gap-2.5 mb-2.5 flex-wrap">
+                <input className="flex-1 min-w-[140px] bg-ctrl-bg2 border border-ctrl-border text-ctrl-text py-[9px] px-3 text-[13px] font-sans outline-none transition-all duration-200 focus:border-ctrl-accent focus:shadow-[0_0_0_2px_rgba(42,107,255,0.1)]" placeholder="Text oznámení..." value={newNews.body} onChange={e => setNewNews(p => ({ ...p, body: e.target.value }))} />
               </div>
-              <div style={{ display: 'flex', gap: 8 }}>
-                <button className="btn btn-p" onClick={addNews}>PŘIDAT</button>
-                <button className="btn btn-g" onClick={() => setShowAddNews(false)}>ZRUŠIT</button>
+              <div className="flex gap-2">
+                <button className="border-0 py-[9px] px-[18px] text-[11px] font-bold tracking-[2px] uppercase cursor-pointer font-sans transition-all duration-200 bg-ctrl-accent text-white hover:bg-ctrl-accent2 hover:-translate-y-px" onClick={addNews}>PŘIDAT</button>
+                <button className="border-0 py-[9px] px-[18px] text-[11px] font-bold tracking-[2px] uppercase cursor-pointer font-sans transition-all duration-200 bg-transparent border border-ctrl-border text-ctrl-text2 hover:border-ctrl-text2 hover:text-ctrl-text" onClick={() => setShowAddNews(false)}>ZRUŠIT</button>
               </div>
             </div>
           )}
 
           {news.slice(0, 5).map(n => (
-            <div key={n.id} className="news-item">
-              <div className="news-dot" style={{ background: n.type === 'warn' ? G.warning : n.type === 'ok' ? G.success : G.accent }} />
-              <div style={{ flex: 1 }}>
-                <div className="news-title">{n.title}</div>
-                <div className="news-body">{n.body}</div>
-                <div className="news-meta">{formatDate(n.created_at)} · {n.tag}</div>
+            <div key={n.id} className="py-4 px-5 flex gap-3 bg-ctrl-panel border border-ctrl-border mb-2.5 transition-all duration-200 animate-slide-in hover:border-ctrl-border2 max-[900px]:py-4 max-[900px]:px-4 max-[900px]:gap-3.5 max-[900px]:mb-3">
+              <div className={cn('w-[7px] h-[7px] mt-[5px] shrink-0', newsDotCls(n.type))} />
+              <div className="flex-1 min-w-0">
+                <div className="text-[13px] font-bold mb-0.5 max-[900px]:text-sm max-[900px]:leading-snug max-[900px]:mb-1">{n.title}</div>
+                <div className="text-xs text-ctrl-text2 leading-normal max-[900px]:text-[13px] max-[900px]:leading-relaxed">{n.body}</div>
+                <div className="font-mono text-[9px] text-ctrl-text3 mt-1 tracking-wide max-[900px]:text-[10px] max-[900px]:mt-2">{formatDate(n.created_at)} · {n.tag}</div>
               </div>
-              {admin && <div className="news-delete" onClick={() => deleteNews(n.id)}>✕</div>}
+              {admin && <div className="text-[11px] text-ctrl-text3 cursor-pointer ml-auto py-0.5 px-1.5 transition-colors duration-200 shrink-0 hover:text-ctrl-danger" onClick={() => deleteNews(n.id)}>✕</div>}
             </div>
           ))}
-          {news.length === 0 && <div style={{ color: G.text2, fontSize: 12 }}>Žádná oznámení.</div>}
-        </div>
+          {news.length === 0 && <div className="text-ctrl-text2 text-xs py-2">Žádná oznámení.</div>}
+        </section>
 
-        <div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
-            <div className="sec" style={{ marginBottom: 0 }}>KALENDÁŘ AKCÍ</div>
-            {admin && <button className="btn btn-p" style={{ fontSize: 10, padding: '6px 12px' }} onClick={() => setShowAddEvent(v => !v)}>+ PŘIDAT</button>}
+        <section className="min-w-0">
+          <div className="flex justify-between items-center gap-3 mb-3.5 max-[900px]:mb-4">
+            <Sec className="!mb-0">KALENDÁŘ AKCÍ</Sec>
+            {admin && <button className="border-0 py-[9px] px-[18px] text-[11px] font-bold tracking-[2px] uppercase cursor-pointer font-sans transition-all duration-200 bg-ctrl-accent text-white hover:bg-ctrl-accent2 hover:-translate-y-px text-[10px] py-1.5 px-3 shrink-0" onClick={() => setShowAddEvent(v => !v)}>+ PŘIDAT</button>}
           </div>
 
           {showAddEvent && (
-            <div className="form-wrap">
-              <div className="form-row">
-                <input className="fi" placeholder="Název akce..." value={newEvent.title} onChange={e => setNewEvent(p => ({ ...p, title: e.target.value }))} />
-                <select className="fs" value={newEvent.type} onChange={e => setNewEvent(p => ({ ...p, type: e.target.value }))}>
+            <div className="bg-ctrl-panel border border-ctrl-accent p-4 mb-3.5 animate-fade-in">
+              <div className="flex gap-2.5 mb-2.5 flex-wrap">
+                <input className="flex-1 min-w-[140px] bg-ctrl-bg2 border border-ctrl-border text-ctrl-text py-[9px] px-3 text-[13px] font-sans outline-none transition-all duration-200 focus:border-ctrl-accent focus:shadow-[0_0_0_2px_rgba(42,107,255,0.1)]" placeholder="Název akce..." value={newEvent.title} onChange={e => setNewEvent(p => ({ ...p, title: e.target.value }))} />
+                <select className="bg-ctrl-bg2 border border-ctrl-border text-ctrl-text2 py-[9px] px-3 text-xs font-sans outline-none cursor-pointer transition-colors duration-200 focus:border-ctrl-accent" value={newEvent.type} onChange={e => setNewEvent(p => ({ ...p, type: e.target.value }))}>
                   <option value="event">Akce</option>
                   <option value="deadline">Deadline</option>
                   <option value="meeting">Schůzka</option>
                 </select>
               </div>
-              <div className="form-row">
-                <input className="fi" type="date" value={newEvent.date} onChange={e => setNewEvent(p => ({ ...p, date: e.target.value }))} />
-                <input className="fi" type="time" value={newEvent.time} onChange={e => setNewEvent(p => ({ ...p, time: e.target.value }))} style={{ maxWidth: 120 }} />
+              <div className="flex gap-2.5 mb-2.5 flex-wrap">
+                <input className="flex-1 min-w-[140px] bg-ctrl-bg2 border border-ctrl-border text-ctrl-text py-[9px] px-3 text-[13px] font-sans outline-none transition-all duration-200 focus:border-ctrl-accent focus:shadow-[0_0_0_2px_rgba(42,107,255,0.1)]" type="date" value={newEvent.date} onChange={e => setNewEvent(p => ({ ...p, date: e.target.value }))} />
+                <input className="flex-1 min-w-[140px] max-w-[120px] bg-ctrl-bg2 border border-ctrl-border text-ctrl-text py-[9px] px-3 text-[13px] font-sans outline-none transition-all duration-200 focus:border-ctrl-accent focus:shadow-[0_0_0_2px_rgba(42,107,255,0.1)]" type="time" value={newEvent.time} onChange={e => setNewEvent(p => ({ ...p, time: e.target.value }))} />
               </div>
-              <div className="form-row">
-                <input className="fi" placeholder="Popis..." value={newEvent.description} onChange={e => setNewEvent(p => ({ ...p, description: e.target.value }))} />
+              <div className="flex gap-2.5 mb-2.5 flex-wrap">
+                <input className="flex-1 min-w-[140px] bg-ctrl-bg2 border border-ctrl-border text-ctrl-text py-[9px] px-3 text-[13px] font-sans outline-none transition-all duration-200 focus:border-ctrl-accent focus:shadow-[0_0_0_2px_rgba(42,107,255,0.1)]" placeholder="Popis..." value={newEvent.description} onChange={e => setNewEvent(p => ({ ...p, description: e.target.value }))} />
               </div>
-              <div style={{ display: 'flex', gap: 8 }}>
-                <button className="btn btn-p" onClick={addEvent}>PŘIDAT</button>
-                <button className="btn btn-g" onClick={() => setShowAddEvent(false)}>ZRUŠIT</button>
+              <div className="flex gap-2">
+                <button className="border-0 py-[9px] px-[18px] text-[11px] font-bold tracking-[2px] uppercase cursor-pointer font-sans transition-all duration-200 bg-ctrl-accent text-white hover:bg-ctrl-accent2 hover:-translate-y-px" onClick={addEvent}>PŘIDAT</button>
+                <button className="border-0 py-[9px] px-[18px] text-[11px] font-bold tracking-[2px] uppercase cursor-pointer font-sans transition-all duration-200 bg-transparent border border-ctrl-border text-ctrl-text2 hover:border-ctrl-text2 hover:text-ctrl-text" onClick={() => setShowAddEvent(false)}>ZRUŠIT</button>
               </div>
             </div>
           )}
 
           {events.slice(0, 6).map(e => (
-            <div key={e.id} className="event-item">
-              <div className="event-date">{e.date}{e.time && ` · ${e.time}`}</div>
-              <div style={{ flex: 1 }}>
-                <div className="event-title">{e.title}</div>
-                {e.description && <div className="event-desc">{e.description}</div>}
+            <div key={e.id} className="py-4 px-5 bg-ctrl-panel border border-ctrl-border mb-2.5 transition-all duration-200 hover:border-ctrl-border2 max-[900px]:py-4 max-[900px]:px-4 max-[900px]:mb-3">
+              <div className="flex items-center justify-between gap-2 mb-2">
+                <div className="font-mono text-[11px] text-ctrl-accent tracking-wide max-[900px]:text-xs">{e.date}{e.time && ` · ${e.time}`}</div>
+                <span className={eventTypeCls[e.type] || eventTypeCls.event}>{e.type === 'event' ? 'AKCE' : e.type === 'deadline' ? 'DEADLINE' : 'SCHŮZKA'}</span>
               </div>
-              <span className={`event-type type-${e.type}`}>{e.type === 'event' ? 'AKCE' : e.type === 'deadline' ? 'DEADLINE' : 'SCHŮZKA'}</span>
+              <div className="min-w-0">
+                <div className="text-[13px] font-semibold leading-snug max-[900px]:text-sm">{e.title}</div>
+                {e.description && <div className="text-xs text-ctrl-text2 mt-1.5 leading-relaxed max-[900px]:text-[13px]">{e.description}</div>}
+              </div>
             </div>
           ))}
-          {events.length === 0 && <div style={{ color: G.text2, fontSize: 12 }}>Žádné nadcházející akce.</div>}
-        </div>
+          {events.length === 0 && <div className="text-ctrl-text2 text-xs py-2">Žádné nadcházející akce.</div>}
+        </section>
       </div>
     </div>
   )
@@ -327,23 +407,23 @@ function Tasks({ profile, tasks, setTasks, activeBucket }) {
   }
 
   return (
-    <div className="fade-in">
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-        <div className="sec" style={{ marginBottom: 0 }}>ÚKOLY {activeBucket && `· ${activeBucket}`}</div>
+    <div className="animate-fade-in">
+      <div className="flex justify-between items-center mb-4">
+        <Sec className="!mb-0">ÚKOLY {activeBucket && `· ${activeBucket}`}</Sec>
         {canAdd && profile.layer !== 'pozorovatel' && (
-          <button className="btn btn-p" onClick={() => setShowAdd(v => !v)}>+ PŘIDAT ÚKOL</button>
+          <button className="border-0 py-[9px] px-[18px] text-[11px] font-bold tracking-[2px] uppercase cursor-pointer font-sans transition-all duration-200 bg-ctrl-accent text-white hover:bg-ctrl-accent2 hover:-translate-y-px" onClick={() => setShowAdd(v => !v)}>+ PŘIDAT ÚKOL</button>
         )}
       </div>
 
       {showAdd && canAdd && (
-        <div className="form-wrap">
-          <div className="form-row">
-            <input className="fi" placeholder="Název úkolu..." value={newTask.name} onChange={e => setNewTask(p => ({ ...p, name: e.target.value }))} />
-            <input className="fi" placeholder="Přiřadit..." value={newTask.assignee} onChange={e => setNewTask(p => ({ ...p, assignee: e.target.value }))} style={{ maxWidth: 160 }} />
-            <input className="fi" placeholder="Termín..." value={newTask.due} onChange={e => setNewTask(p => ({ ...p, due: e.target.value }))} style={{ maxWidth: 120 }} />
+        <div className="bg-ctrl-panel border border-ctrl-accent p-4 mb-3.5 animate-fade-in">
+          <div className="flex gap-2.5 mb-2.5 flex-wrap">
+            <input className="flex-1 min-w-[140px] bg-ctrl-bg2 border border-ctrl-border text-ctrl-text py-[9px] px-3 text-[13px] font-sans outline-none transition-all duration-200 focus:border-ctrl-accent focus:shadow-[0_0_0_2px_rgba(42,107,255,0.1)]" placeholder="Název úkolu..." value={newTask.name} onChange={e => setNewTask(p => ({ ...p, name: e.target.value }))} />
+            <input className="flex-1 min-w-[140px] max-w-[160px] bg-ctrl-bg2 border border-ctrl-border text-ctrl-text py-[9px] px-3 text-[13px] font-sans outline-none transition-all duration-200 focus:border-ctrl-accent focus:shadow-[0_0_0_2px_rgba(42,107,255,0.1)]" placeholder="Přiřadit..." value={newTask.assignee} onChange={e => setNewTask(p => ({ ...p, assignee: e.target.value }))} />
+            <input className="flex-1 min-w-[140px] max-w-[120px] bg-ctrl-bg2 border border-ctrl-border text-ctrl-text py-[9px] px-3 text-[13px] font-sans outline-none transition-all duration-200 focus:border-ctrl-accent focus:shadow-[0_0_0_2px_rgba(42,107,255,0.1)]" placeholder="Termín..." value={newTask.due} onChange={e => setNewTask(p => ({ ...p, due: e.target.value }))} />
           </div>
-          <div className="form-row">
-            <select className="fs" value={newTask.tag} onChange={e => setNewTask(p => ({ ...p, tag: e.target.value }))}>
+          <div className="flex gap-2.5 mb-2.5 flex-wrap">
+            <select className="bg-ctrl-bg2 border border-ctrl-border text-ctrl-text2 py-[9px] px-3 text-xs font-sans outline-none cursor-pointer transition-colors duration-200 focus:border-ctrl-accent" value={newTask.tag} onChange={e => setNewTask(p => ({ ...p, tag: e.target.value }))}>
               <option value="other">Obecné</option>
               <option value="podcast">Podcast</option>
               <option value="research">Research</option>
@@ -351,41 +431,41 @@ function Tasks({ profile, tasks, setTasks, activeBucket }) {
               <option value="event">Event</option>
             </select>
             {admin && (
-              <select className="fs" value={newTask.bucket_target} onChange={e => setNewTask(p => ({ ...p, bucket_target: e.target.value }))}>
+              <select className="bg-ctrl-bg2 border border-ctrl-border text-ctrl-text2 py-[9px] px-3 text-xs font-sans outline-none cursor-pointer transition-colors duration-200 focus:border-ctrl-accent" value={newTask.bucket_target} onChange={e => setNewTask(p => ({ ...p, bucket_target: e.target.value }))}>
                 <option value="all">Všechny buňky</option>
                 {ALL_BUCKETS.map(b => <option key={b} value={b}>{b}</option>)}
               </select>
             )}
-            <button className="btn btn-p" onClick={addTask}>PŘIDAT</button>
-            <button className="btn btn-g" onClick={() => setShowAdd(false)}>ZRUŠIT</button>
+            <button className="border-0 py-[9px] px-[18px] text-[11px] font-bold tracking-[2px] uppercase cursor-pointer font-sans transition-all duration-200 bg-ctrl-accent text-white hover:bg-ctrl-accent2 hover:-translate-y-px" onClick={addTask}>PŘIDAT</button>
+            <button className="border-0 py-[9px] px-[18px] text-[11px] font-bold tracking-[2px] uppercase cursor-pointer font-sans transition-all duration-200 bg-transparent border border-ctrl-border text-ctrl-text2 hover:border-ctrl-text2 hover:text-ctrl-text" onClick={() => setShowAdd(false)}>ZRUŠIT</button>
           </div>
         </div>
       )}
 
-      <div className="tabs">
-        <div className={`tab${activeTab === 'open' ? ' active' : ''}`} onClick={() => setActiveTab('open')}>
+      <div className="flex gap-0 mb-5 border-b border-ctrl-border">
+        <div className={cn('py-2.5 px-5 font-mono text-[10px] tracking-[2px] uppercase cursor-pointer text-ctrl-text2 border-b-2 border-transparent -mb-px transition-all duration-200 hover:text-ctrl-text', activeTab === 'open' && 'text-ctrl-accent border-b-ctrl-accent')} onClick={() => setActiveTab('open')}>
           OTEVŘENÉ ({openTasks.length})
         </div>
-        <div className={`tab${activeTab === 'done' ? ' active' : ''}`} onClick={() => setActiveTab('done')}>
+        <div className={cn('py-2.5 px-5 font-mono text-[10px] tracking-[2px] uppercase cursor-pointer text-ctrl-text2 border-b-2 border-transparent -mb-px transition-all duration-200 hover:text-ctrl-text', activeTab === 'done' && 'text-ctrl-accent border-b-ctrl-accent')} onClick={() => setActiveTab('done')}>
           SPLNĚNÉ ({doneTasks.length})
         </div>
       </div>
 
       {displayTasks.map(t => (
-        <div key={t.id} className={`task-item${t.done ? ' is-done' : ''}`}>
+        <div key={t.id} className="py-3.5 px-[18px] flex items-center gap-3 mb-2 bg-ctrl-panel border border-ctrl-border transition-all duration-200 hover:border-ctrl-border2">
           {profile.layer !== 'pozorovatel' && (
-            <div className={`task-check${t.done ? ' done' : ''}`} onClick={() => toggleTask(t)} />
+            <div className={cn('w-[18px] h-[18px] border-2 border-ctrl-border2 cursor-pointer shrink-0 flex items-center justify-center transition-all duration-200 hover:border-ctrl-accent', t.done && 'bg-ctrl-success border-ctrl-success')} onClick={() => toggleTask(t)}>{t.done && <span className="text-black text-[11px] font-bold">✓</span>}</div>
           )}
-          <div style={{ flex: 1 }}>
-            <div className="task-name">{t.name}</div>
-            <div className="task-meta">{t.assignee && `${t.assignee} · `}{t.due && `Termín: ${t.due}`}</div>
-            {t.done && t.completed_at && <div className="task-completor">✓ {getCompletorName(t)}</div>}
+          <div className="flex-1 min-w-0">
+            <div className={cn('text-[13px] font-semibold transition-all duration-200', t.done && 'line-through text-ctrl-text2')}>{t.name}</div>
+            <div className="font-mono text-[10px] text-ctrl-text2 mt-0.5">{t.assignee && `${t.assignee} · `}{t.due && `Termín: ${t.due}`}</div>
+            {t.done && t.completed_at && <div className="text-[10px] text-ctrl-success font-mono mt-0.5">✓ {getCompletorName(t)}</div>}
           </div>
-          <span className={`tag tag-${t.tag}`}>{t.tag}</span>
+          <span className={tagCls[t.tag] || tagCls.other}>{t.tag}</span>
         </div>
       ))}
       {displayTasks.length === 0 && (
-        <div style={{ color: G.text2, fontSize: 13, padding: '20px 0' }}>
+        <div className="text-ctrl-text2 text-[13px] py-5">
           {activeTab === 'open' ? 'Žádné otevřené úkoly.' : 'Žádná historie splněných úkolů.'}
         </div>
       )}
@@ -447,34 +527,34 @@ function Chat({ profile, activeBucket }) {
     setMessages(prev => prev.filter(m => m.id !== msg.id))
   }
 
-  if (loading) return <div style={{ color: G.text2, fontSize: 13 }}>Načítám zprávy...</div>
+  if (loading) return <div className="text-ctrl-text2 text-[13px]">Načítám zprávy...</div>
 
   return (
-    <div className="chat-wrap fade-in">
-      <div className="sec">CHAT · {bucket.toUpperCase()}</div>
+    <div className="flex flex-col h-[calc(100vh-110px)] max-[900px]:h-[calc(100vh-130px)] animate-fade-in">
+      <Sec>CHAT · {bucket.toUpperCase()}</Sec>
       {pinnedMsg && (
-        <div className="chat-pinned">
-          <div className="chat-pinned-icon">📌</div>
-          <div className="chat-pinned-text"><strong>{pinnedMsg.author_name}:</strong> {pinnedMsg.text}</div>
+        <div className="border border-[rgba(42,107,255,0.2)] py-2.5 px-3.5 mb-3 flex items-start gap-2.5 bg-[rgba(42,107,255,0.08)]">
+          <div className="text-ctrl-accent text-xs shrink-0 mt-px">📌</div>
+          <div className="text-xs text-ctrl-text2 flex-1"><strong>{pinnedMsg.author_name}:</strong> {pinnedMsg.text}</div>
         </div>
       )}
-      <div className="chat-msgs">
+      <div className="flex-1 overflow-y-auto flex flex-col gap-3 pb-3">
         {messages.map(m => {
           const isOwn = m.author_id === profile.id
           return (
-            <div key={m.id} className={`msg${isOwn ? ' own' : ''}`}>
-              <div className="msg-av" style={{ background: isOwn ? G.accent : G.panel2, color: isOwn ? '#fff' : G.text }}>
+            <div key={m.id} className={cn('flex gap-2.5 items-start animate-fade-in', isOwn && 'flex-row-reverse', "group")}>
+              <div className={cn('w-[30px] h-[30px] shrink-0 flex items-center justify-center text-[11px] font-bold font-mono border border-ctrl-border', isOwn ? 'bg-ctrl-accent text-white' : 'bg-ctrl-panel2 text-ctrl-text')}>
                 {m.author_initials}
               </div>
-              <div className="msg-bubble">
-                <div className="msg-author">
+              <div className={cn('max-w-[68%] bg-ctrl-panel border border-ctrl-border py-2.5 px-3.5 transition-colors duration-200 hover:border-ctrl-border2', isOwn && 'bg-[rgba(42,107,255,0.08)] border-[rgba(42,107,255,0.25)]')}>
+                <div className={cn('font-mono text-[9px] text-ctrl-accent tracking-wide uppercase mb-0.5 flex items-center gap-2', isOwn && 'flex-row-reverse')}>
                   {m.author_name}
                   {isAdmin(profile.layer) && !isOwn && (
-                    <span className="pin-btn" onClick={() => pinMessage(m)}>📌 připnout</span>
+                    <span className="text-[9px] text-ctrl-text3 cursor-pointer opacity-0 transition-opacity duration-200 group-hover:opacity-100 hover:text-ctrl-accent" onClick={() => pinMessage(m)}>📌 připnout</span>
                   )}
                 </div>
-                <div className="msg-text">{m.text}</div>
-                <div className="msg-time">{formatDate(m.created_at)}</div>
+                <div className="text-[13px] leading-normal">{m.text}</div>
+                <div className={cn('font-mono text-[9px] text-ctrl-text3 mt-1', isOwn && 'text-right')}>{formatDate(m.created_at)}</div>
               </div>
             </div>
           )
@@ -482,13 +562,13 @@ function Chat({ profile, activeBucket }) {
         <div ref={bottomRef} />
       </div>
       {canWrite ? (
-        <div className="chat-input-row">
-          <input className="chat-input" placeholder="Napiš zprávu..." value={input}
+        <div className="flex gap-2 pt-3 border-t border-ctrl-border mt-1">
+          <input className="flex-1 bg-ctrl-panel border border-ctrl-border text-ctrl-text py-3 px-4 text-[13px] font-sans outline-none transition-all duration-200 focus:border-ctrl-accent" placeholder="Napiš zprávu..." value={input}
             onChange={e => setInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && sendMessage()} />
-          <button className="btn btn-p" onClick={sendMessage} style={{ padding: '12px 20px', fontFamily: 'JetBrains Mono, monospace' }}>→</button>
+          <button className="border-0 py-3 px-5 text-[11px] font-bold tracking-[2px] uppercase cursor-pointer font-mono transition-all duration-200 bg-ctrl-accent text-white hover:bg-ctrl-accent2 hover:-translate-y-px" onClick={sendMessage}>→</button>
         </div>
       ) : (
-        <div style={{ padding: '12px 0', color: G.text2, fontSize: 12, fontFamily: 'JetBrains Mono, monospace', borderTop: `1px solid ${G.border}` }}>
+        <div className="py-3 text-ctrl-text2 text-xs font-mono border-t border-ctrl-border">
           // Pozorovatel — pouze čtení
         </div>
       )}
@@ -516,74 +596,57 @@ function MemberModal({ member, tasks, onClose }) {
 
   const roleLabel = ROLE_LABELS[member.layer] || member.layer
 
-  return (
-    <div style={{
-      position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)',
-      zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center',
-      padding: 16, backdropFilter: 'blur(4px)'
-    }} onClick={onClose}>
-      <div style={{
-        background: G.panel, border: `1px solid ${G.border}`,
-        borderRadius: 4, width: '100%', maxWidth: 480,
-        maxHeight: '85vh', overflowY: 'auto'
-      }} onClick={e => e.stopPropagation()}>
+  const isOnline = member.last_seen && (Date.now() - new Date(member.last_seen)) < 300000
 
-        {/* Header */}
-        <div style={{ padding: '28px 28px 20px', borderBottom: `1px solid ${G.border}` }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-            <div style={{
-              width: 64, height: 64, borderRadius: '50%',
-              background: getBucketColor(member.bucket) + '22',
-              border: `2px solid ${getBucketColor(member.bucket)}44`,
-              color: getBucketColor(member.bucket),
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: 22, fontWeight: 800, fontFamily: 'JetBrains Mono, monospace',
-              flexShrink: 0
-            }}>
+  return (
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-[rgba(0,0,0,0.7)] backdrop-blur-sm" onClick={onClose}>
+      <div className="bg-ctrl-panel border border-ctrl-border rounded w-full max-w-[480px] max-h-[85vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+
+        <div className="py-7 px-7 pb-5 border-b border-ctrl-border">
+          <div className="flex items-center gap-4">
+            <div className={cn('w-16 h-16 rounded-full flex items-center justify-center text-[22px] font-extrabold font-mono shrink-0', bucketAvCls(member.bucket))}>
               {getInitials(member.name)}
             </div>
-            <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 18, fontWeight: 800, marginBottom: 2 }}>{member.name}</div>
-              <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 10, color: G.accent, letterSpacing: 2, textTransform: 'uppercase', marginBottom: 4 }}>
+            <div className="flex-1 min-w-0">
+              <div className="text-lg font-extrabold mb-0.5">{member.name}</div>
+              <div className="font-mono text-[10px] text-ctrl-accent tracking-[2px] uppercase mb-1">
                 {roleLabel}
               </div>
-              <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 10, color: G.text2, letterSpacing: 1 }}>
+              <div className="font-mono text-[10px] text-ctrl-text2 tracking-wide">
                 {member.bucket}{member.secondary_bucket ? ` · ${member.secondary_bucket}` : ''}
               </div>
             </div>
-            <button onClick={onClose} style={{ background: 'none', border: 'none', color: G.text2, fontSize: 20, cursor: 'pointer', padding: 4 }}>×</button>
+            <button onClick={onClose} className="bg-transparent border-0 text-ctrl-text2 text-xl cursor-pointer p-1 hover:text-ctrl-text">×</button>
           </div>
         </div>
 
-        {/* Stats */}
-        <div style={{ padding: '16px 28px', borderBottom: `1px solid ${G.border}`, display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
-          <div style={{ textAlign: 'center' }}>
-            <div style={{ fontSize: 22, fontWeight: 800, color: G.accent }}>{openTasks.length}</div>
-            <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 9, color: G.text2, letterSpacing: 1, textTransform: 'uppercase', marginTop: 2 }}>otevřené úkoly</div>
+        <div className="py-4 px-7 border-b border-ctrl-border grid grid-cols-3 gap-3">
+          <div className="text-center">
+            <div className="text-[22px] font-extrabold text-ctrl-accent">{openTasks.length}</div>
+            <div className="font-mono text-[9px] text-ctrl-text2 tracking-wide uppercase mt-0.5">otevřené úkoly</div>
           </div>
-          <div style={{ textAlign: 'center' }}>
-            <div style={{ fontSize: 22, fontWeight: 800 }}>{doneTasks.length}</div>
-            <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 9, color: G.text2, letterSpacing: 1, textTransform: 'uppercase', marginTop: 2 }}>splněno</div>
+          <div className="text-center">
+            <div className="text-[22px] font-extrabold">{doneTasks.length}</div>
+            <div className="font-mono text-[9px] text-ctrl-text2 tracking-wide uppercase mt-0.5">splněno</div>
           </div>
-          <div style={{ textAlign: 'center' }}>
-            <div style={{ fontSize: 11, fontWeight: 600, color: member.last_seen && (Date.now() - new Date(member.last_seen)) < 300000 ? '#4ade80' : G.text2, marginTop: 4 }}>
+          <div className="text-center">
+            <div className={cn('text-[11px] font-semibold mt-1', isOnline ? 'text-[#4ade80]' : 'text-ctrl-text2')}>
               {lastSeen}
             </div>
-            <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 9, color: G.text2, letterSpacing: 1, textTransform: 'uppercase', marginTop: 2 }}>naposledy online</div>
+            <div className="font-mono text-[9px] text-ctrl-text2 tracking-wide uppercase mt-0.5">naposledy online</div>
           </div>
         </div>
 
-        {/* Open tasks */}
         {openTasks.length > 0 && (
-          <div style={{ padding: '16px 28px', borderBottom: `1px solid ${G.border}` }}>
-            <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 10, color: G.text2, letterSpacing: 2, textTransform: 'uppercase', marginBottom: 10 }}>
+          <div className="py-4 px-7 border-b border-ctrl-border">
+            <div className="font-mono text-[10px] text-ctrl-text2 tracking-[2px] uppercase mb-2.5">
               Otevřené úkoly ({openTasks.length})
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <div className="flex flex-col gap-1.5">
               {openTasks.slice(0, 5).map(t => (
-                <div key={t.id} style={{ fontSize: 13, padding: '8px 12px', background: G.bg2, borderLeft: `2px solid ${G.accent}`, borderRadius: 2 }}>
+                <div key={t.id} className="text-[13px] py-2 px-3 bg-ctrl-bg2 border-l-2 border-l-ctrl-accent rounded-sm">
                   {t.text}
-                  {t.due_date && <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 10, color: G.text2, marginLeft: 8 }}>{t.due_date}</span>}
+                  {t.due_date && <span className="font-mono text-[10px] text-ctrl-text2 ml-2">{t.due_date}</span>}
                 </div>
               ))}
             </div>
@@ -591,15 +654,15 @@ function MemberModal({ member, tasks, onClose }) {
         )}
 
         {openTasks.length === 0 && (
-          <div style={{ padding: '16px 28px', borderBottom: `1px solid ${G.border}` }}>
-            <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 10, color: G.text2, letterSpacing: 1, textAlign: 'center' }}>
+          <div className="py-4 px-7 border-b border-ctrl-border">
+            <div className="font-mono text-[10px] text-ctrl-text2 tracking-wide text-center">
               Žádné otevřené úkoly
             </div>
           </div>
         )}
 
-        <div style={{ padding: '12px 28px' }}>
-          <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 9, color: G.text2, letterSpacing: 1 }}>
+        <div className="py-3 px-7">
+          <div className="font-mono text-[9px] text-ctrl-text2 tracking-wide">
             Člen od: {member.created_at ? new Date(member.created_at).toLocaleDateString('cs-CZ') : 'neznámo'}
           </div>
         </div>
@@ -612,21 +675,19 @@ function BucketView({ profile, bucket, tasks, setTasks, members }) {
   const [view, setView] = useState('tasks')
   const [selectedMember, setSelectedMember] = useState(null)
   const bucketMembers = members.filter(m => m.bucket === bucket || m.secondary_bucket === bucket)
-  const color = getBucketColor(bucket)
-
   return (
-    <div className="fade-in">
-      <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 20 }}>
-        <div style={{ width: 4, height: 36, background: color }} />
+    <div className="animate-fade-in">
+      <div className="flex items-center gap-3.5 mb-5">
+        <div className={cn('w-1 h-9 shrink-0', bucketBarCls(bucket))} />
         <div>
-          <div style={{ fontSize: 20, fontWeight: 800 }}>{bucket}</div>
-          <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 10, color: G.text2, letterSpacing: 2, textTransform: 'uppercase' }}>
+          <div className="text-xl font-extrabold">{bucket}</div>
+          <div className="font-mono text-[10px] text-ctrl-text2 tracking-[2px] uppercase">
             {bucketMembers.length} členů
           </div>
         </div>
-        <div style={{ display: 'flex', gap: 4, marginLeft: 'auto', flexWrap: 'wrap' }}>
+        <div className="flex gap-1 ml-auto flex-wrap">
           {bucketMembers.slice(0, 6).map(m => (
-            <div key={m.id} className="bucket-member-av" style={{ background: color + '22', border: `1px solid ${color}44`, color, cursor: 'pointer' }}
+            <div key={m.id} className={cn('w-6 h-6 flex items-center justify-center text-[9px] font-bold font-mono cursor-pointer transition-transform duration-200 hover:scale-[1.15] hover:z-[1]', bucketMemberAvCls(bucket))}
               onClick={() => setSelectedMember(m)} title={m.name}>
               {getInitials(m.name)}
             </div>
@@ -635,9 +696,9 @@ function BucketView({ profile, bucket, tasks, setTasks, members }) {
         </div>
       </div>
 
-      <div className="tabs">
-        <div className={`tab${view === 'tasks' ? ' active' : ''}`} onClick={() => setView('tasks')}>ÚKOLY</div>
-        <div className={`tab${view === 'chat' ? ' active' : ''}`} onClick={() => setView('chat')}>CHAT</div>
+      <div className="flex gap-0 mb-5 border-b border-ctrl-border">
+        <div className={cn('py-2.5 px-5 font-mono text-[10px] tracking-[2px] uppercase cursor-pointer text-ctrl-text2 border-b-2 border-transparent -mb-px transition-all duration-200 hover:text-ctrl-text', view === 'tasks' && 'text-ctrl-accent border-b-ctrl-accent')} onClick={() => setView('tasks')}>ÚKOLY</div>
+        <div className={cn('py-2.5 px-5 font-mono text-[10px] tracking-[2px] uppercase cursor-pointer text-ctrl-text2 border-b-2 border-transparent -mb-px transition-all duration-200 hover:text-ctrl-text', view === 'chat' && 'text-ctrl-accent border-b-ctrl-accent')} onClick={() => setView('chat')}>CHAT</div>
       </div>
 
       {view === 'tasks' && <Tasks profile={profile} tasks={tasks} setTasks={setTasks} activeBucket={bucket} />}
@@ -651,31 +712,30 @@ function BucketOverview({ profile, tasks, members, onSelectBucket }) {
   const [selectedMember, setSelectedMember] = useState(null)
 
   return (
-    <div className="fade-in">
-      <div className="sec">BUŇKY PROJEKTU</div>
-      <div className="bucket-grid">
+    <div className="animate-fade-in">
+      <Sec>BUŇKY PROJEKTU</Sec>
+      <div className="grid grid-cols-3 gap-3 mb-5 max-[900px]:grid-cols-2 max-[900px]:gap-2">
         {accessible.map(bucket => {
-          const color = getBucketColor(bucket)
           const bucketTasks = tasks.filter(t => (t.bucket_target === bucket || t.bucket_target === 'all') && !t.done)
           const bucketMembers = members.filter(m => m.bucket === bucket || m.secondary_bucket === bucket)
           const isSpecial = SPECIAL_BUCKETS.includes(bucket)
 
           return (
-            <div key={bucket} className="bucket-card" style={{ '--bc': color }}
+            <div key={bucket} className="p-5 cursor-pointer bg-ctrl-panel border border-ctrl-border relative overflow-hidden transition-all duration-[250ms] hover:-translate-y-[3px] hover:shadow-[0_12px_40px_rgba(0,0,0,0.5)]"
               onClick={() => onSelectBucket(bucket)}>
-              <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 3, background: color }} />
-              <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 8 }}>
-                <div className="bucket-name">{bucket}</div>
+              <div className={cn('absolute top-0 left-0 right-0 h-[3px]', bucketBarCls(bucket))} />
+              <div className="flex items-start justify-between mb-2">
+                <div className="text-[13px] font-bold mb-1">{bucket}</div>
                 {isSpecial && (
-                  <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 8, padding: '2px 6px', background: color + '22', color, letterSpacing: 1, textTransform: 'uppercase' }}>
+                  <span className={cn('font-mono text-[8px] py-0.5 px-1.5 tracking-wide uppercase', bucketOrganBadgeCls(bucket))}>
                     ORGÁN
                   </span>
                 )}
               </div>
-              <div className="bucket-count">{bucketTasks.length} otevřených úkolů · {bucketMembers.length} členů</div>
-              <div className="bucket-members">
+              <div className="font-mono text-[10px] text-ctrl-text2">{bucketTasks.length} otevřených úkolů · {bucketMembers.length} členů</div>
+              <div className="flex gap-1 mt-2.5 flex-wrap">
                 {bucketMembers.slice(0, 5).map(m => (
-                  <div key={m.id} className="bucket-member-av" style={{ background: color + '20', border: `1px solid ${color}40`, color, cursor: 'pointer' }}
+                  <div key={m.id} className={cn('w-6 h-6 flex items-center justify-center text-[9px] font-bold font-mono cursor-pointer transition-transform duration-200 hover:scale-[1.15] hover:z-[1]', bucketMemberAvCls(bucket))}
                     onClick={e => { e.stopPropagation(); setSelectedMember(m); }} title={m.name}>
                     {getInitials(m.name)}
                   </div>
@@ -693,13 +753,13 @@ function BucketOverview({ profile, tasks, members, onSelectBucket }) {
 function AdminPanel({ profile, members }) {
   const [activeTab, setActiveTab] = useState('members')
 
-  const getLastSeenClass = (lastSeen) => {
-    if (!lastSeen) return 'last-seen-never'
+  const getLastSeenKind = (lastSeen) => {
+    if (!lastSeen) return 'never'
     const diff = new Date() - new Date(lastSeen)
-    if (diff < 86400000) return 'last-seen-good'
-    if (diff < 86400000 * 3) return 'last-seen-ok'
-    if (diff < 86400000 * 7) return 'last-seen-bad'
-    return 'last-seen-never'
+    if (diff < 86400000) return 'good'
+    if (diff < 86400000 * 3) return 'ok'
+    if (diff < 86400000 * 7) return 'bad'
+    return 'never'
   }
 
   const bucketStats = ALL_BUCKETS.map(bucket => {
@@ -711,35 +771,35 @@ function AdminPanel({ profile, members }) {
   const maxActive = Math.max(...bucketStats.map(s => s.active), 1)
 
   return (
-    <div className="fade-in">
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
-        <div className="sec" style={{ marginBottom: 0 }}>ADMIN PANEL</div>
-        <span style={{ background: G.danger, color: '#fff', fontFamily: 'JetBrains Mono, monospace', fontSize: 9, padding: '2px 8px', letterSpacing: 1 }}>POUZE ADMIN</span>
+    <div className="animate-fade-in">
+      <div className="flex items-center gap-3 mb-5">
+        <Sec className="!mb-0">ADMIN PANEL</Sec>
+        <span className="bg-ctrl-danger text-white font-mono text-[9px] py-0.5 px-2 tracking-wide">POUZE ADMIN</span>
       </div>
 
-      <div className="tabs">
-        <div className={`tab${activeTab === 'members' ? ' active' : ''}`} onClick={() => setActiveTab('members')}>ČLENOVÉ ({members.length})</div>
-        <div className={`tab${activeTab === 'stats' ? ' active' : ''}`} onClick={() => setActiveTab('stats')}>STATISTIKY</div>
-        <div className={`tab${activeTab === 'add' ? ' active' : ''}`} onClick={() => setActiveTab('add')}>PŘIDAT ČLENA</div>
+      <div className="flex gap-0 mb-5 border-b border-ctrl-border">
+        <div className={cn('py-2.5 px-5 font-mono text-[10px] tracking-[2px] uppercase cursor-pointer text-ctrl-text2 border-b-2 border-transparent -mb-px transition-all duration-200 hover:text-ctrl-text', activeTab === 'members' && 'text-ctrl-accent border-b-ctrl-accent')} onClick={() => setActiveTab('members')}>ČLENOVÉ ({members.length})</div>
+        <div className={cn('py-2.5 px-5 font-mono text-[10px] tracking-[2px] uppercase cursor-pointer text-ctrl-text2 border-b-2 border-transparent -mb-px transition-all duration-200 hover:text-ctrl-text', activeTab === 'stats' && 'text-ctrl-accent border-b-ctrl-accent')} onClick={() => setActiveTab('stats')}>STATISTIKY</div>
+        <div className={cn('py-2.5 px-5 font-mono text-[10px] tracking-[2px] uppercase cursor-pointer text-ctrl-text2 border-b-2 border-transparent -mb-px transition-all duration-200 hover:text-ctrl-text', activeTab === 'add' && 'text-ctrl-accent border-b-ctrl-accent')} onClick={() => setActiveTab('add')}>PŘIDAT ČLENA</div>
       </div>
 
       {activeTab === 'members' && (
         <div>
           {members.map(m => (
-            <div key={m.id} className="member-row">
-              <div style={{ width: 34, height: 34, background: getBucketColor(m.bucket) + '22', border: `1px solid ${getBucketColor(m.bucket)}44`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 700, fontFamily: 'JetBrains Mono, monospace', color: getBucketColor(m.bucket), flexShrink: 0 }}>
+            <div key={m.id} className="py-3 px-4 flex items-center gap-3 bg-ctrl-panel border border-ctrl-border mb-2 transition-all duration-200 hover:border-ctrl-border2">
+              <div className={cn('w-[34px] h-[34px] flex items-center justify-center text-xs font-bold font-mono shrink-0', bucketMemberAvCls(m.bucket))}>
                 {getInitials(m.name)}
               </div>
-              <div style={{ flex: 1 }}>
-                <div style={{ fontSize: 13, fontWeight: 700 }}>{m.name}</div>
-                <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 10, color: G.text2, marginTop: 2 }}>
+              <div className="flex-1 min-w-0">
+                <div className="text-[13px] font-bold">{m.name}</div>
+                <div className="font-mono text-[10px] text-ctrl-text2 mt-0.5">
                   {m.role} · {m.bucket}{m.secondary_bucket && ` + ${m.secondary_bucket}`}
                 </div>
               </div>
-              <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 9, padding: '2px 7px', letterSpacing: 1, textTransform: 'uppercase', background: ROLE_COLORS[m.layer] + '20', color: ROLE_COLORS[m.layer] }}>
+              <span className={cn('font-mono text-[9px] py-0.5 px-[7px] tracking-wide uppercase', roleBadgeCls(m.layer))}>
                 {ROLE_LABELS[m.layer] || m.layer}
               </span>
-              <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 10, minWidth: 120, textAlign: 'right' }} className={getLastSeenClass(m.last_seen)}>
+              <div className={cn('font-mono text-[10px] min-w-[120px] text-right', lastSeenCls(getLastSeenKind(m.last_seen)))}>
                 {formatTime(m.last_seen)}
               </div>
             </div>
@@ -749,15 +809,17 @@ function AdminPanel({ profile, members }) {
 
       {activeTab === 'stats' && (
         <div>
-          <div className="report-card">
-            <div className="sec">AKTIVITA BUNĚK — POSLEDNÍCH 7 DNÍ</div>
+          <div className="bg-ctrl-panel border border-ctrl-border p-5 mb-3">
+            <Sec>AKTIVITA BUNĚK — POSLEDNÍCH 7 DNÍ</Sec>
             {bucketStats.map(s => (
-              <div key={s.bucket} className="report-bucket">
-                <div style={{ width: 140, fontSize: 12, color: G.text2 }}>{s.bucket}</div>
-                <div className="report-bar">
-                  <div className="report-bar-fill" style={{ width: `${(s.active / maxActive) * 100}%`, background: getBucketColor(s.bucket) }} />
+              <div key={s.bucket} className="flex items-center gap-3 py-2.5 border-b border-ctrl-border last:border-b-0">
+                <div className="w-[140px] text-xs text-ctrl-text2 shrink-0">{s.bucket}</div>
+                <div className="flex-1 h-1 bg-ctrl-border flex gap-px overflow-hidden">
+                  {Array.from({ length: maxActive }, (_, i) => (
+                    <div key={i} className={cn('flex-1 h-full min-w-0 transition-colors duration-[600ms]', i < s.active ? bucketBarCls(s.bucket) : 'bg-transparent')} />
+                  ))}
                 </div>
-                <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 11, color: G.text2, minWidth: 80, textAlign: 'right' }}>
+                <div className="font-mono text-[11px] text-ctrl-text2 min-w-[80px] text-right">
                   {s.active}/{s.total} aktivních
                 </div>
               </div>
@@ -767,14 +829,14 @@ function AdminPanel({ profile, members }) {
       )}
 
       {activeTab === 'add' && (
-        <div className="form-wrap" style={{ border: `1px solid ${G.warning}` }}>
-          <div className="sec">JAK PŘIDAT ČLENA</div>
-          <div style={{ fontSize: 12, color: G.text2, lineHeight: 1.8, fontFamily: 'JetBrains Mono, monospace' }}>
-            <div style={{ color: G.warning, marginBottom: 8 }}>Krok 1 — Supabase → Authentication → Users → Add User</div>
-            <div style={{ color: G.text2, marginBottom: 4 }}>Email + heslo + Auto Confirm User ✓</div>
-            <div style={{ color: G.text2, marginBottom: 16 }}>Zkopíruj UUID nového uživatele</div>
-            <div style={{ color: G.warning, marginBottom: 8 }}>Krok 2 — Supabase → SQL Editor → spusť:</div>
-            <div style={{ background: G.bg2, padding: 12, color: G.success, fontSize: 11, lineHeight: 2, borderLeft: `2px solid ${G.accent}` }}>
+        <div className="bg-ctrl-panel border border-ctrl-warning p-4 mb-3.5 animate-fade-in">
+          <Sec>JAK PŘIDAT ČLENA</Sec>
+          <div className="text-xs text-ctrl-text2 leading-[1.8] font-mono">
+            <div className="text-ctrl-warning mb-2">Krok 1 — Supabase → Authentication → Users → Add User</div>
+            <div className="text-ctrl-text2 mb-1">Email + heslo + Auto Confirm User ✓</div>
+            <div className="text-ctrl-text2 mb-4">Zkopíruj UUID nového uživatele</div>
+            <div className="text-ctrl-warning mb-2">Krok 2 — Supabase → SQL Editor → spusť:</div>
+            <div className="bg-ctrl-bg2 p-3 text-ctrl-success text-[11px] leading-loose border-l-2 border-l-ctrl-accent">
               INSERT INTO profiles (id, name, role, bucket, layer, secondary_bucket)<br />
               VALUES (<br />
               &nbsp;&nbsp;'UUID-sem',<br />
@@ -785,7 +847,7 @@ function AdminPanel({ profile, members }) {
               &nbsp;&nbsp;NULL -- nebo 'Předsednictvo' pro dual membership<br />
               );
             </div>
-            <div style={{ color: G.text2, marginTop: 12, fontSize: 11 }}>
+            <div className="text-ctrl-text2 mt-3 text-[11px]">
               Dostupné vrstvy: admin · predsednictvo · zastupce_predsednictva · vedouci · clen · pozorovatel
             </div>
           </div>
@@ -804,46 +866,43 @@ function Profile({ profile, members }) {
   }
 
   const statusConfig = {
-    active: { color: G.success, label: 'Aktivní', dot: 'status-active' },
-    away: { color: G.warning, label: 'Zaneprázdněn', dot: 'status-away' },
-    needs_help: { color: G.danger, label: 'Potřebuji pomoc', dot: 'status-help' },
+    active: { label: 'Aktivní' },
+    away: { label: 'Zaneprázdněn' },
+    needs_help: { label: 'Potřebuji pomoc' },
   }
 
-  const myStats = members.find(m => m.id === profile.id)
-
   return (
-    <div className="fade-in">
-      <div className="sec">PROFIL ČLENA</div>
-      <div className="profile-grid">
-        <div style={{ background: G.panel, border: `1px solid ${G.border}`, padding: 28 }}>
-          <div className="profile-av-big" style={{ background: getBucketColor(profile.bucket) + '30', border: `2px solid ${getBucketColor(profile.bucket)}50`, color: getBucketColor(profile.bucket) }}>
+    <div className="animate-fade-in">
+      <Sec>PROFIL ČLENA</Sec>
+      <div className="grid gap-4 grid-cols-[260px_1fr] max-[900px]:grid-cols-1">
+        <div className="bg-ctrl-panel border border-ctrl-border p-7">
+          <div className={cn('w-[72px] h-[72px] flex items-center justify-center text-[26px] font-bold font-mono mb-4 transition-transform duration-200 hover:scale-105', bucketAvCls(profile.bucket))}>
             {getInitials(profile.name)}
           </div>
-          <div style={{ fontSize: 18, fontWeight: 800, marginBottom: 4 }}>{profile.name}</div>
-          <div style={{ display: 'inline-block', background: ROLE_COLORS[profile.layer] + '20', color: ROLE_COLORS[profile.layer], fontFamily: 'JetBrains Mono, monospace', fontSize: 9, padding: '3px 10px', letterSpacing: 2, textTransform: 'uppercase', marginBottom: 16 }}>
+          <div className="text-lg font-extrabold mb-1">{profile.name}</div>
+          <div className={cn('inline-block font-mono text-[9px] py-[3px] px-2.5 tracking-[2px] uppercase mb-4', roleBadgeCls(profile.layer))}>
             {ROLE_LABELS[profile.layer] || profile.layer}
           </div>
-          <div className="div" />
-          <div style={{ marginBottom: 14 }}>
-            <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 9, letterSpacing: 2, textTransform: 'uppercase', color: G.text2, marginBottom: 4 }}>Buňka</div>
-            <div style={{ fontSize: 13 }}>{profile.bucket}</div>
+          <div className="h-px bg-ctrl-border my-5" />
+          <div className="mb-3.5">
+            <div className="font-mono text-[9px] tracking-[2px] uppercase text-ctrl-text2 mb-1">Buňka</div>
+            <div className="text-[13px]">{profile.bucket}</div>
           </div>
           {profile.secondary_bucket && (
-            <div style={{ marginBottom: 14 }}>
-              <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 9, letterSpacing: 2, textTransform: 'uppercase', color: G.text2, marginBottom: 4 }}>Sekundární buňka</div>
-              <div style={{ fontSize: 13 }}>{profile.secondary_bucket}</div>
+            <div className="mb-3.5">
+              <div className="font-mono text-[9px] tracking-[2px] uppercase text-ctrl-text2 mb-1">Sekundární buňka</div>
+              <div className="text-[13px]">{profile.secondary_bucket}</div>
             </div>
           )}
-          <div style={{ marginBottom: 14 }}>
-            <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 9, letterSpacing: 2, textTransform: 'uppercase', color: G.text2, marginBottom: 8 }}>Stav</div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-              <div className={`status-dot ${statusConfig[status].dot}`} />
-              <span style={{ fontSize: 13 }}>{statusConfig[status].label}</span>
+          <div className="mb-3.5">
+            <div className="font-mono text-[9px] tracking-[2px] uppercase text-ctrl-text2 mb-2">Stav</div>
+            <div className="flex items-center gap-2 mb-2.5">
+              <div className={cn('w-[7px] h-[7px] rounded-full shrink-0', status === "active" && 'bg-ctrl-success shadow-[0_0_6px_#00e5a0]', status === "away" && 'bg-ctrl-warning', status === "needs_help" && 'bg-ctrl-danger animate-pulse')} />
+              <span className="text-[13px]">{statusConfig[status].label}</span>
             </div>
-            <div className="status-picker">
+            <div className="flex gap-2 mt-2">
               {Object.entries(statusConfig).map(([key, val]) => (
-                <div key={key} className={`status-opt${status === key ? ' selected' : ''}`}
-                  style={{ color: val.color, borderColor: status === key ? val.color : G.border }}
+                <div key={key} className={cn('py-1 px-2.5 font-mono text-[9px] tracking-wide uppercase cursor-pointer border transition-all duration-200 hover:border-ctrl-accent', status === key ? STATUS_OPT_CLS[key] : 'border-ctrl-border text-ctrl-text2')}
                   onClick={() => updateStatus(key)}>
                   {val.label}
                 </div>
@@ -852,9 +911,9 @@ function Profile({ profile, members }) {
           </div>
         </div>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <div style={{ background: G.panel, border: `1px solid ${G.border}`, padding: 20 }}>
-            <div className="sec">PŘÍSTUPOVÁ PRÁVA</div>
+        <div className="flex flex-col gap-3">
+          <div className="bg-ctrl-panel border border-ctrl-border p-5">
+            <Sec>PŘÍSTUPOVÁ PRÁVA</Sec>
             {[
               'Dashboard a oznámení',
               profile.layer !== 'pozorovatel' && 'Chat v buňce',
@@ -864,18 +923,18 @@ function Profile({ profile, members }) {
               isAdmin(profile.layer) && 'Správa všech buněk',
               profile.layer === 'pozorovatel' && 'Čtení všech buněk',
             ].filter(Boolean).map(p => (
-              <div key={p} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 7 }}>
-                <span style={{ color: G.success, fontFamily: 'JetBrains Mono', fontSize: 11 }}>✓</span>
-                <span style={{ fontSize: 13, color: G.text2 }}>{p}</span>
+              <div key={p} className="flex items-center gap-2 mb-[7px]">
+                <span className="text-ctrl-success font-mono text-[11px]">✓</span>
+                <span className="text-[13px] text-ctrl-text2">{p}</span>
               </div>
             ))}
           </div>
 
           <PasswordChange />
 
-          <div style={{ background: G.panel, border: `1px solid ${G.border}`, padding: 20 }}>
-            <div className="sec">DOKUMENTY SPOLKU</div>
-            <div style={{ fontSize: 12, color: G.text2, marginBottom: 14, lineHeight: 1.6 }}>
+          <div className="bg-ctrl-panel border border-ctrl-border p-5">
+            <Sec>DOKUMENTY SPOLKU</Sec>
+            <div className="text-xs text-ctrl-text2 mb-3.5 leading-relaxed">
               Oficiální dokumenty CTRL Europe Team, z. s. Kliknutím stáhneš dokument.
             </div>
             {[
@@ -884,30 +943,26 @@ function Profile({ profile, members }) {
               { name: 'GDPR — Zásady zpracování osobních údajů', desc: 'Jak zpracováváme tvé osobní údaje', icon: '🔒' },
               { name: 'Členský závazek', desc: 'Vzor členského závazku spolku', icon: '✍️' },
             ].map(doc => (
-              <div key={doc.name} style={{
-                display: 'flex', alignItems: 'center', gap: 12,
-                padding: '12px 0', borderBottom: `1px solid ${G.border}`,
-                cursor: 'default', opacity: 0.7
-              }}>
-                <span style={{ fontSize: 18 }}>{doc.icon}</span>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 2 }}>{doc.name}</div>
-                  <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 10, color: G.text2, letterSpacing: 0.5 }}>{doc.desc}</div>
+              <div key={doc.name} className="flex items-center gap-3 py-3 border-b border-ctrl-border cursor-default opacity-70">
+                <span className="text-lg">{doc.icon}</span>
+                <div className="flex-1 min-w-0">
+                  <div className="text-[13px] font-semibold mb-0.5">{doc.name}</div>
+                  <div className="font-mono text-[10px] text-ctrl-text2 tracking-wide">{doc.desc}</div>
                 </div>
-                <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 9, color: G.text2, letterSpacing: 1 }}>BRZY</span>
+                <span className="font-mono text-[9px] text-ctrl-text2 tracking-wide shrink-0">BRZY</span>
               </div>
             ))}
-            <div style={{ marginTop: 12, fontFamily: 'JetBrains Mono, monospace', fontSize: 10, color: G.text2, letterSpacing: 1 }}>
+            <div className="mt-3 font-mono text-[10px] text-ctrl-text2 tracking-wide">
               Dokumenty budou k dispozici po finálním podpisu a zápisu spolku.
             </div>
           </div>
 
-          <div style={{ background: G.panel, border: `1px solid ${G.border}`, padding: 20 }}>
-            <div className="sec">CTRL EUROPE TEAM</div>
-            <div style={{ fontSize: 13, color: G.text2, lineHeight: 1.7 }}>
+          <div className="bg-ctrl-panel border border-ctrl-border p-5">
+            <Sec>CTRL EUROPE TEAM</Sec>
+            <div className="text-[13px] text-ctrl-text2 leading-relaxed">
               CEE Youth Platform zaměřená na digitální hrozby naší generace. AI, deepfakes, dezinformace — a proč nás školy nepřipravují.
             </div>
-            <div style={{ marginTop: 14, fontFamily: 'JetBrains Mono', fontSize: 11, color: G.accent, letterSpacing: 1, fontStyle: 'italic' }}>
+            <div className="mt-3.5 font-mono text-[11px] text-ctrl-accent tracking-wide italic">
               "Take control before someone else does."
             </div>
           </div>
@@ -944,31 +999,31 @@ function PasswordChange() {
   }
 
   return (
-    <div style={{ background: G.panel, border: `1px solid ${G.border}`, padding: 20 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <div className="sec" style={{ marginBottom: 0 }}>ZMĚNIT HESLO</div>
-        <button className="btn btn-g" style={{ fontSize: 10, padding: '6px 12px' }} onClick={() => { setOpen(v => !v); setMsg(''); setError('') }}>
+    <div className="bg-ctrl-panel border border-ctrl-border p-5">
+      <div className="flex justify-between items-center">
+        <Sec className="!mb-0">ZMĚNIT HESLO</Sec>
+        <button className="border-0 py-1.5 px-3 text-[10px] font-bold tracking-[2px] uppercase cursor-pointer font-sans transition-all duration-200 bg-transparent border border-ctrl-border text-ctrl-text2 hover:border-ctrl-text2 hover:text-ctrl-text" onClick={() => { setOpen(v => !v); setMsg(''); setError('') }}>
           {open ? 'ZRUŠIT' : 'ZMĚNIT'}
         </button>
       </div>
-      {msg && <div style={{ color: G.success, fontFamily: 'JetBrains Mono', fontSize: 11, marginTop: 10 }}>✓ {msg}</div>}
+      {msg && <div className="text-ctrl-success font-mono text-[11px] mt-2.5">✓ {msg}</div>}
       {open && (
-        <div style={{ marginTop: 14, animation: 'fadeIn 0.2s ease' }}>
-          <div style={{ marginBottom: 10 }}>
-            <div style={{ fontFamily: 'JetBrains Mono', fontSize: 9, letterSpacing: 2, textTransform: 'uppercase', color: G.text2, marginBottom: 6 }}>Původní heslo</div>
-            <input className="fi" type="password" placeholder="Původní heslo..." value={oldPass} onChange={e => setOldPass(e.target.value)} style={{ width: '100%' }} />
+        <div className="mt-3.5 animate-fade-in">
+          <div className="mb-2.5">
+            <div className="font-mono text-[9px] tracking-[2px] uppercase text-ctrl-text2 mb-1.5">Původní heslo</div>
+            <input className="w-full bg-ctrl-bg2 border border-ctrl-border text-ctrl-text py-[9px] px-3 text-[13px] font-sans outline-none transition-all duration-200 focus:border-ctrl-accent focus:shadow-[0_0_0_2px_rgba(42,107,255,0.1)]" type="password" placeholder="Původní heslo..." value={oldPass} onChange={e => setOldPass(e.target.value)} />
           </div>
-          <div style={{ marginBottom: 10 }}>
-            <div style={{ fontFamily: 'JetBrains Mono', fontSize: 9, letterSpacing: 2, textTransform: 'uppercase', color: G.text2, marginBottom: 6 }}>Nové heslo</div>
-            <input className="fi" type="password" placeholder="Nové heslo (min. 6 znaků)..." value={newPass} onChange={e => setNewPass(e.target.value)} style={{ width: '100%' }} />
+          <div className="mb-2.5">
+            <div className="font-mono text-[9px] tracking-[2px] uppercase text-ctrl-text2 mb-1.5">Nové heslo</div>
+            <input className="w-full bg-ctrl-bg2 border border-ctrl-border text-ctrl-text py-[9px] px-3 text-[13px] font-sans outline-none transition-all duration-200 focus:border-ctrl-accent focus:shadow-[0_0_0_2px_rgba(42,107,255,0.1)]" type="password" placeholder="Nové heslo (min. 6 znaků)..." value={newPass} onChange={e => setNewPass(e.target.value)} />
           </div>
-          <div style={{ marginBottom: 14 }}>
-            <div style={{ fontFamily: 'JetBrains Mono', fontSize: 9, letterSpacing: 2, textTransform: 'uppercase', color: G.text2, marginBottom: 6 }}>Potvrdit nové heslo</div>
-            <input className="fi" type="password" placeholder="Zopakuj nové heslo..." value={confirm} onChange={e => setConfirm(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && handleChange()} style={{ width: '100%' }} />
+          <div className="mb-3.5">
+            <div className="font-mono text-[9px] tracking-[2px] uppercase text-ctrl-text2 mb-1.5">Potvrdit nové heslo</div>
+            <input className="w-full bg-ctrl-bg2 border border-ctrl-border text-ctrl-text py-[9px] px-3 text-[13px] font-sans outline-none transition-all duration-200 focus:border-ctrl-accent focus:shadow-[0_0_0_2px_rgba(42,107,255,0.1)]" type="password" placeholder="Zopakuj nové heslo..." value={confirm} onChange={e => setConfirm(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && handleChange()} />
           </div>
-          {error && <div style={{ color: G.danger, fontFamily: 'JetBrains Mono', fontSize: 11, marginBottom: 10 }}>// {error}</div>}
-          <button className="btn btn-p" onClick={handleChange} disabled={loading}>
+          {error && <div className="text-ctrl-danger font-mono text-[11px] mb-2.5">// {error}</div>}
+          <button className="border-0 py-[9px] px-[18px] text-[11px] font-bold tracking-[2px] uppercase cursor-pointer font-sans transition-all duration-200 bg-ctrl-accent text-white hover:bg-ctrl-accent2 hover:-translate-y-px" onClick={handleChange} disabled={loading}>
             {loading ? 'MĚNÍM...' : 'ULOŽIT NOVÉ HESLO'}
           </button>
         </div>
@@ -1035,9 +1090,9 @@ export default function App() {
   }
 
   if (loading) return (
-    <div className="loading">
-        <div className="loading-logo">[<span>CTRL</span>]</div>
-        <div className="loading-text">Načítám portál...</div>
+    <div className="flex flex-col items-center justify-center min-h-screen bg-ctrl-bg gap-4">
+        <div className="font-mono text-4xl font-bold tracking-[-1px]">[<span className="text-ctrl-accent [text-shadow:0_0_20px_rgba(42,107,255,0.5)]">CTRL</span>]</div>
+        <div className="font-mono text-[11px] tracking-[3px] text-ctrl-text2 uppercase animate-pulse-slow">Načítám portál...</div>
     </div>
   )
 
@@ -1066,46 +1121,49 @@ export default function App() {
   const myStatus = statusConfig[profile.status || 'active']
 
   return (
-    <div className="app">
-        <div className="sidebar">
-          <div className="sidebar-logo">
-            <div className="sidebar-logo-glitch">[<span>CTRL</span>]</div>
-            <div className="sidebar-logo-sub">Members Portal</div>
+    <div className="flex min-h-screen">
+        <div className="w-[230px] min-h-screen bg-ctrl-panel border-r border-ctrl-border flex flex-col fixed left-0 top-0 bottom-0 z-[200] max-[900px]:hidden">
+          <div className="py-6 px-5 pb-4 border-b border-ctrl-border relative overflow-hidden">
+            <div className="font-mono text-[28px] font-bold tracking-[-1px] relative inline-block">
+              [<span className="text-ctrl-accent">CTRL</span>]
+              <span className="absolute inset-0 text-ctrl-danger opacity-0 animate-glitch pointer-events-none" aria-hidden>[CTRL]</span>
+            </div>
+            <div className="font-mono text-[9px] tracking-[2px] text-ctrl-text2 uppercase mt-0.5">Members Portal</div>
           </div>
 
-          <div className="sidebar-user">
-            <div className="sidebar-av" style={{ background: getBucketColor(profile.bucket) + '25', border: `1px solid ${getBucketColor(profile.bucket)}50`, color: getBucketColor(profile.bucket) }}>
+          <div className="py-3.5 px-5 border-b border-ctrl-border">
+            <div className={cn('w-9 h-9 flex items-center justify-center text-[13px] font-bold font-mono mb-2 transition-transform duration-200 hover:scale-105', bucketMemberAvCls(profile.bucket))}>
               {getInitials(profile.name)}
             </div>
-            <div className="sidebar-name">{profile.name}</div>
-            <div className="sidebar-role-badge" style={{ background: ROLE_COLORS[profile.layer] + '20', color: ROLE_COLORS[profile.layer] }}>
+            <div className="text-[13px] font-bold">{profile.name}</div>
+            <div className={cn('inline-block font-mono text-[9px] py-0.5 px-[7px] tracking-wide uppercase mt-0.5', roleBadgeCls(profile.layer))}>
               {ROLE_LABELS[profile.layer]}
             </div>
-            <div className="sidebar-status">
-              <div className={`status-dot ${myStatus.dot}`} />
-              <span className="status-text">{myStatus.label}</span>
+            <div className="flex items-center gap-1.5 mt-2">
+              <div className={cn('w-[7px] h-[7px] rounded-full shrink-0', (profile.status || "active") === "active" && 'bg-ctrl-success shadow-[0_0_6px_#00e5a0]', profile.status === "away" && 'bg-ctrl-warning', profile.status === "needs_help" && 'bg-ctrl-danger animate-pulse')} />
+              <span className="font-mono text-[9px] text-ctrl-text2 tracking-wide cursor-pointer hover:text-ctrl-text">{myStatus.label}</span>
             </div>
           </div>
 
-          <nav className="sidebar-nav">
-            <div className="nav-section">Navigace</div>
+          <nav className="flex-1 py-2.5 overflow-y-auto">
+            <div className="py-2.5 px-5 pb-1 font-mono text-[8px] tracking-[3px] text-ctrl-text3 uppercase">Navigace</div>
             {NAV_MAIN.map(n => (
-              <div key={n.id} className={`nav-item${page === n.id && !activeBucket ? ' active' : ''}`}
+              <div key={n.id} className={cn('flex items-center gap-2.5 py-2.5 px-5 cursor-pointer text-ctrl-text2 text-xs font-semibold tracking-wide uppercase border-l-2 border-transparent transition-all duration-200 relative hover:text-ctrl-text hover:bg-[rgba(42,107,255,0.05)] hover:translate-x-0.5', page === n.id && !activeBucket && 'text-ctrl-accent border-l-ctrl-accent bg-[rgba(42,107,255,0.1)]')}
                 onClick={() => { setPage(n.id); setActiveBucket(null) }}>
-                <span className="nav-icon">{n.icon}</span>
+                <span className="text-sm w-[18px] text-center shrink-0">{n.icon}</span>
                 <span>{n.label}</span>
-                {n.id === 'dashboard' && myOpenCount > 0 && <span className="nav-badge">{myOpenCount}</span>}
+                {n.id === 'dashboard' && myOpenCount > 0 && <span className="absolute right-3.5 top-1/2 -translate-y-1/2 bg-ctrl-danger text-white text-[9px] min-w-4 h-4 flex items-center justify-center rounded-lg font-mono animate-badge-pop">{myOpenCount}</span>}
               </div>
             ))}
 
             {teamBuckets.length > 0 && (
               <>
-                <div className="nav-section">Týmové buňky</div>
+                <div className="py-2.5 px-5 pb-1 font-mono text-[8px] tracking-[3px] text-ctrl-text3 uppercase">Týmové buňky</div>
                 {teamBuckets.map(b => (
-                  <div key={b} className={`nav-item${activeBucket === b ? ' active' : ''}`}
+                  <div key={b} className={cn('flex items-center gap-2.5 py-2.5 px-5 cursor-pointer text-ctrl-text2 text-xs font-semibold tracking-wide uppercase border-l-2 border-transparent transition-all duration-200 relative hover:text-ctrl-text hover:bg-[rgba(42,107,255,0.05)] hover:translate-x-0.5', activeBucket === b && 'text-ctrl-accent border-l-ctrl-accent bg-[rgba(42,107,255,0.1)]')}
                     onClick={() => handleSelectBucket(b)}>
-                    <div className="nav-bucket-color" style={{ background: getBucketColor(b) }} />
-                    <span style={{ fontSize: 11 }}>{b}</span>
+                    <div className={cn('w-1.5 h-1.5 shrink-0', bucketDotCls(b))} />
+                    <span className="text-[11px]">{b}</span>
                   </div>
                 ))}
               </>
@@ -1113,26 +1171,26 @@ export default function App() {
 
             {specialBuckets.length > 0 && (
               <>
-                <div className="nav-section">Orgány</div>
+                <div className="py-2.5 px-5 pb-1 font-mono text-[8px] tracking-[3px] text-ctrl-text3 uppercase">Orgány</div>
                 {specialBuckets.map(b => (
-                  <div key={b} className={`nav-item${activeBucket === b ? ' active' : ''}`}
+                  <div key={b} className={cn('flex items-center gap-2.5 py-2.5 px-5 cursor-pointer text-ctrl-text2 text-xs font-semibold tracking-wide uppercase border-l-2 border-transparent transition-all duration-200 relative hover:text-ctrl-text hover:bg-[rgba(42,107,255,0.05)] hover:translate-x-0.5', activeBucket === b && 'text-ctrl-accent border-l-ctrl-accent bg-[rgba(42,107,255,0.1)]')}
                     onClick={() => handleSelectBucket(b)}>
-                    <div className="nav-bucket-color" style={{ background: getBucketColor(b) }} />
-                    <span style={{ fontSize: 11 }}>{b}</span>
+                    <div className={cn('w-1.5 h-1.5 shrink-0', bucketDotCls(b))} />
+                    <span className="text-[11px]">{b}</span>
                   </div>
                 ))}
               </>
             )}
           </nav>
 
-          <div className="sidebar-bottom">
-            <button className="logout-btn" onClick={handleLogout}>ODHLÁSIT SE</button>
+          <div className="py-3.5 px-5 border-t border-ctrl-border">
+            <button className="w-full bg-transparent border border-ctrl-border text-ctrl-text2 py-[9px] text-[10px] tracking-[2px] uppercase cursor-pointer font-mono transition-all duration-200 hover:border-ctrl-danger hover:text-ctrl-danger hover:bg-[rgba(255,51,102,0.05)]" onClick={handleLogout}>ODHLÁSIT SE</button>
           </div>
         </div>
 
-        <div className="main">
-          <div className="topbar">
-            <span className="topbar-title">
+        <div className="ml-[230px] flex-1 min-h-screen animate-fade-in max-[900px]:ml-0 max-[900px]:pb-[70px]">
+          <div className="h-[54px] bg-ctrl-panel border-b border-ctrl-border flex items-center px-7 gap-3 sticky top-0 z-[100] backdrop-blur-md max-[900px]:px-4 max-[900px]:h-[50px]">
+            <span className="font-mono text-[10px] tracking-[3px] uppercase text-ctrl-text2">
               [CTRL] ·{' '}
               {activeBucket ? activeBucket :
                 page === 'dashboard' ? 'Dashboard' :
@@ -1141,22 +1199,22 @@ export default function App() {
                       page === 'admin' ? 'Admin' : ''}
             </span>
             {activeBucket && (
-              <button className="btn btn-g" style={{ fontSize: 10, padding: '4px 10px' }}
+              <button className="border-0 py-1 px-2.5 text-[10px] font-bold tracking-[2px] uppercase cursor-pointer font-sans transition-all duration-200 bg-transparent border border-ctrl-border text-ctrl-text2 hover:border-ctrl-text2 hover:text-ctrl-text"
                 onClick={() => { setActiveBucket(null); setPage('buckets') }}>
                 ← Zpět
               </button>
             )}
             {myOpenCount > 0 && !activeBucket && (
-              <span className="topbar-badge" style={{ background: G.accent }}>
+              <span className="text-[9px] py-0.5 px-2 font-mono tracking-wide bg-ctrl-accent text-white">
                 {myOpenCount} ÚKOLŮ
               </span>
             )}
             {admin && (
-              <span className="topbar-badge" style={{ background: G.danger, marginLeft: 'auto' }}>ADMIN</span>
+              <span className="text-[9px] py-0.5 px-2 font-mono tracking-wide bg-ctrl-danger text-white ml-auto">ADMIN</span>
             )}
           </div>
 
-          <div className="content">
+          <div className="p-7 animate-fade-in max-[900px]:p-4">
             {!activeBucket && page === 'dashboard' && (
               <Dashboard profile={profile} tasks={tasks} news={news} setNews={setNews} events={events} members={members} />
             )}
@@ -1201,59 +1259,53 @@ function MobileBottomNav({ page, activeBucket, setPage, setActiveBucket, accessi
   const teamBuckets = accessibleBuckets.filter(b => ['PR a komunikace','Sociální sítě','Podcast','Research','Grafika','Video','Mezinárodní','Eventy'].includes(b))
   const specialBuckets = accessibleBuckets.filter(b => ['Rada zástupců','Předsednictvo'].includes(b))
 
-  const BUCKET_COLORS = {
-    'PR a komunikace': '#2A6BFF', 'Sociální sítě': '#ffb800', 'Podcast': '#b44fff',
-    'Research': '#00c9ff', 'Grafika': '#ff6b35', 'Video': '#ff3366',
-    'Mezinárodní': '#00e5a0', 'Eventy': '#00e5a0', 'Rada zástupců': '#ffb800', 'Předsednictvo': '#b44fff',
-  }
-
   return (
     <>
-      <div className="bottom-nav">
+      <div className="hidden fixed bottom-0 left-0 right-0 h-[62px] bg-ctrl-panel border-t border-ctrl-border z-[300] px-1 items-center justify-around pb-[env(safe-area-inset-bottom)] max-[900px]:flex">
         {navItems.map(n => (
           <div key={n.id}
-            className={"bottom-nav-item" + (page === n.id && !activeBucket ? ' active' : '')}
+            className={cn('flex flex-col items-center justify-center gap-0.5 py-2 px-2.5 cursor-pointer flex-1 text-ctrl-text2 transition-all duration-150 relative rounded-lg active:scale-90', page === n.id && !activeBucket && 'text-ctrl-accent bg-[rgba(42,107,255,0.1)]')}
             onClick={() => { setPage(n.id); setActiveBucket(null); setDrawerOpen(false) }}>
-            {n.id === 'dashboard' && myOpenCount > 0 && <span className="bottom-nav-badge">{myOpenCount}</span>}
-            <span className="bottom-nav-icon">{n.icon}</span>
-            <span className="bottom-nav-label">{n.label}</span>
+            {n.id === 'dashboard' && myOpenCount > 0 && <span className="absolute top-[5px] right-2 bg-ctrl-danger text-white text-[8px] min-w-[14px] h-3.5 flex items-center justify-center rounded-[7px]">{myOpenCount}</span>}
+            <span className="text-xl leading-none">{n.icon}</span>
+            <span className="font-mono text-[8px] tracking-wide uppercase">{n.label}</span>
           </div>
         ))}
-        <div className={"bottom-nav-item" + (drawerOpen || activeBucket ? ' active' : '')}
+        <div className={cn('flex flex-col items-center justify-center gap-0.5 py-2 px-2.5 cursor-pointer flex-1 text-ctrl-text2 transition-all duration-150 relative rounded-lg active:scale-90', (drawerOpen || activeBucket) && 'text-ctrl-accent bg-[rgba(42,107,255,0.1)]')}
           onClick={() => setDrawerOpen(v => !v)}>
-          <span className="bottom-nav-icon">☰</span>
-          <span className="bottom-nav-label">Menu</span>
+          <span className="text-xl leading-none">☰</span>
+          <span className="font-mono text-[8px] tracking-wide uppercase">Menu</span>
         </div>
       </div>
 
-      <div className={"bucket-drawer" + (drawerOpen ? ' open' : '')} onClick={() => setDrawerOpen(false)}>
-        <div className="bucket-drawer-content" onClick={e => e.stopPropagation()}>
-          <div className="drawer-handle" />
-          <div className="drawer-section">Týmové buňky</div>
+      <div className={cn('hidden fixed inset-0 z-[400] backdrop-blur-sm animate-fade-in bg-[rgba(0,0,0,0.75)]', drawerOpen && 'flex items-end')} onClick={() => setDrawerOpen(false)}>
+        <div className="bg-ctrl-panel border-t border-ctrl-border w-full max-h-[78vh] overflow-y-auto px-4 pt-4 pb-8 rounded-t-2xl animate-slide-up" onClick={e => e.stopPropagation()}>
+          <div className="w-9 h-1 bg-ctrl-border2 rounded-sm mx-auto mb-4" />
+          <div className="font-mono text-[9px] tracking-[3px] text-ctrl-text3 uppercase py-3 px-3 pb-1">Týmové buňky</div>
           {teamBuckets.map(b => {
             const bucketTasks = tasks.filter(t => (t.bucket_target === b) && !t.done)
             return (
-              <div key={b} className="drawer-bucket-item" onClick={() => { handleSelectBucket(b); setDrawerOpen(false) }}>
-                <div className="drawer-bucket-dot" style={{ background: BUCKET_COLORS[b] || '#2A6BFF' }} />
-                <span className="drawer-bucket-name">{b}</span>
-                {bucketTasks.length > 0 && <span className="drawer-bucket-count">{bucketTasks.length} úkolů</span>}
+              <div key={b} className="flex items-center gap-3 py-3.5 px-3 cursor-pointer rounded-lg transition-colors duration-150 mb-0.5 active:bg-[rgba(42,107,255,0.1)]" onClick={() => { handleSelectBucket(b); setDrawerOpen(false) }}>
+                <div className={cn('w-2.5 h-2.5 rounded-sm shrink-0', bucketDotCls(b))} />
+                <span className="text-[15px] font-semibold">{b}</span>
+                {bucketTasks.length > 0 && <span className="font-mono text-[10px] text-ctrl-text2 ml-auto">{bucketTasks.length} úkolů</span>}
               </div>
             )
           })}
           {specialBuckets.length > 0 && (
             <>
-              <div className="drawer-section">Orgány</div>
+              <div className="font-mono text-[9px] tracking-[3px] text-ctrl-text3 uppercase py-3 px-3 pb-1">Orgány</div>
               {specialBuckets.map(b => (
-                <div key={b} className="drawer-bucket-item" onClick={() => { handleSelectBucket(b); setDrawerOpen(false) }}>
-                  <div className="drawer-bucket-dot" style={{ background: BUCKET_COLORS[b] || '#2A6BFF' }} />
-                  <span className="drawer-bucket-name">{b}</span>
+                <div key={b} className="flex items-center gap-3 py-3.5 px-3 cursor-pointer rounded-lg transition-colors duration-150 mb-0.5 active:bg-[rgba(42,107,255,0.1)]" onClick={() => { handleSelectBucket(b); setDrawerOpen(false) }}>
+                  <div className={cn('w-2.5 h-2.5 rounded-sm shrink-0', bucketDotCls(b))} />
+                  <span className="text-[15px] font-semibold">{b}</span>
                 </div>
               ))}
             </>
           )}
-          <div style={{ paddingTop: 12 }}>
-            <div className="drawer-bucket-item" onClick={() => { setDrawerOpen(false) }} style={{ opacity: 0.5 }}>
-              <span style={{ fontSize: 13, color: '#7878a0' }}>Zavřít</span>
+          <div className="pt-3">
+            <div className="flex items-center gap-3 py-3.5 px-3 cursor-pointer rounded-lg transition-colors duration-150 mb-0.5 active:bg-[rgba(42,107,255,0.1)] opacity-50" onClick={() => { setDrawerOpen(false) }}>
+              <span className="text-[13px] text-ctrl-text2">Zavřít</span>
             </div>
           </div>
         </div>
