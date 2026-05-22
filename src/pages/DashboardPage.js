@@ -1,0 +1,164 @@
+import { useState } from 'react'
+import { supabase } from '../supabase'
+import { Sec } from '../components/ui/Sec'
+import { cn } from '../lib/utils'
+import { formatDate } from '../lib/format'
+import { isAdmin } from '../lib/permissions'
+import { newsDotCls, eventTypeCls } from '../constants/styles'
+import { useAppData } from '../context/AppDataContext'
+
+export function DashboardPage() {
+  const { profile, tasks, news, setNews, events, members } = useAppData()
+  const [showAddNews, setShowAddNews] = useState(false)
+  const [showAddEvent, setShowAddEvent] = useState(false)
+  const [newNews, setNewNews] = useState({ title: '', body: '', tag: 'INFO', type: 'accent' })
+  const [newEvent, setNewEvent] = useState({ title: '', description: '', date: '', time: '', type: 'event' })
+  const admin = isAdmin(profile.layer)
+
+  const myOpenTasks = tasks.filter(t => !t.done && (t.bucket_target === 'all' || t.bucket_target === profile.bucket))
+
+  const deleteNews = async (id) => {
+    await supabase.from('news').delete().eq('id', id)
+    setNews(prev => prev.filter(n => n.id !== id))
+  }
+
+  const addNews = async () => {
+    if (!newNews.title || !newNews.body) return
+    const { data } = await supabase.from('news').insert([{ ...newNews, created_by: profile.id }]).select()
+    if (data) { setNews(prev => [data[0], ...prev]); setNewNews({ title: '', body: '', tag: 'INFO', type: 'accent' }); setShowAddNews(false) }
+  }
+
+  const addEvent = async () => {
+    if (!newEvent.title || !newEvent.date) return
+    await supabase.from('events').insert([{ ...newEvent, created_by: profile.id }])
+    setShowAddEvent(false)
+    window.location.reload()
+  }
+
+  const totalDone = tasks.filter(t => t.done).length
+  const totalOpen = tasks.filter(t => !t.done).length
+  const activeMembers = members.filter(m => {
+    if (!m.last_seen) return false
+    return new Date() - new Date(m.last_seen) < 86400000 * 7
+  }).length
+
+  return (
+    <div className="animate-fade-in">
+      <div className="mb-6">
+        <div className="text-[22px] font-extrabold mb-1">
+          Vítej zpět, {profile.name.split(' ')[0]} 👋
+        </div>
+        <div className="font-mono text-[11px] text-ctrl-accent tracking-[2px] opacity-60 mt-1 max-[900px]:text-[10px]">"Take control before someone else does."</div>
+      </div>
+
+      <div className="grid grid-cols-4 gap-3 mb-6 max-[900px]:grid-cols-2 max-[900px]:gap-2">
+        <div className="p-5 bg-ctrl-panel border border-ctrl-border border-b-2 border-b-ctrl-accent relative overflow-hidden transition-all duration-[250ms] hover:border-ctrl-border2 hover:-translate-y-px max-[900px]:p-3.5">
+          <div className="font-mono text-4xl font-bold leading-none mb-1 max-[900px]:text-[26px] text-ctrl-accent">{totalOpen}</div>
+          <div className="font-mono text-[9px] tracking-[2px] uppercase text-ctrl-text2">Otevřené úkoly</div>
+        </div>
+        <div className="p-5 bg-ctrl-panel border border-ctrl-border border-b-2 border-b-ctrl-success relative overflow-hidden transition-all duration-[250ms] hover:border-ctrl-border2 hover:-translate-y-px max-[900px]:p-3.5">
+          <div className="font-mono text-4xl font-bold leading-none mb-1 max-[900px]:text-[26px] text-ctrl-success">{totalDone}</div>
+          <div className="font-mono text-[9px] tracking-[2px] uppercase text-ctrl-text2">Splněné úkoly</div>
+        </div>
+        <div className="p-5 bg-ctrl-panel border border-ctrl-border border-b-2 border-b-ctrl-warning relative overflow-hidden transition-all duration-[250ms] hover:border-ctrl-border2 hover:-translate-y-px max-[900px]:p-3.5">
+          <div className="font-mono text-4xl font-bold leading-none mb-1 max-[900px]:text-[26px] text-ctrl-warning">{myOpenTasks.length}</div>
+          <div className="font-mono text-[9px] tracking-[2px] uppercase text-ctrl-text2">Moje úkoly</div>
+        </div>
+        <div className="p-5 bg-ctrl-panel border border-ctrl-border border-b-2 border-b-ctrl-info relative overflow-hidden transition-all duration-[250ms] hover:border-ctrl-border2 hover:-translate-y-px max-[900px]:p-3.5">
+          <div className="font-mono text-4xl font-bold leading-none mb-1 max-[900px]:text-[26px] text-ctrl-info">{activeMembers}</div>
+          <div className="font-mono text-[9px] tracking-[2px] uppercase text-ctrl-text2">Aktivní tento týden</div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-5 max-[900px]:grid-cols-1 max-[900px]:gap-8">
+        <section className="min-w-0">
+          <div className="flex justify-between items-center gap-3 mb-3.5 max-[900px]:mb-4">
+            <Sec className="!mb-0">OZNÁMENÍ</Sec>
+            {admin && (
+              <button className="border-0 py-[9px] px-[18px] text-[11px] font-bold tracking-[2px] uppercase cursor-pointer font-sans transition-all duration-200 bg-ctrl-accent text-white hover:bg-ctrl-accent2 hover:-translate-y-px text-[10px] py-1.5 px-3 shrink-0" onClick={() => setShowAddNews(v => !v)}>+ PŘIDAT</button>
+            )}
+          </div>
+
+          {showAddNews && (
+            <div className="bg-ctrl-panel border border-ctrl-accent p-4 mb-3.5 animate-fade-in">
+              <div className="flex gap-2.5 mb-2.5 flex-wrap">
+                <input className="flex-1 min-w-[140px] bg-ctrl-bg2 border border-ctrl-border text-ctrl-text py-[9px] px-3 text-[13px] font-sans outline-none transition-all duration-200 focus:border-ctrl-accent focus:shadow-[0_0_0_2px_rgba(42,107,255,0.1)]" placeholder="Nadpis..." value={newNews.title} onChange={e => setNewNews(p => ({ ...p, title: e.target.value }))} />
+                <input className="flex-1 min-w-[140px] max-w-[100px] bg-ctrl-bg2 border border-ctrl-border text-ctrl-text py-[9px] px-3 text-[13px] font-sans outline-none transition-all duration-200 focus:border-ctrl-accent focus:shadow-[0_0_0_2px_rgba(42,107,255,0.1)]" placeholder="Tag..." value={newNews.tag} onChange={e => setNewNews(p => ({ ...p, tag: e.target.value }))} />
+                <select className="bg-ctrl-bg2 border border-ctrl-border text-ctrl-text2 py-[9px] px-3 text-xs font-sans outline-none cursor-pointer transition-colors duration-200 focus:border-ctrl-accent" value={newNews.type} onChange={e => setNewNews(p => ({ ...p, type: e.target.value }))}>
+                  <option value="accent">Modrá</option>
+                  <option value="warn">Žlutá</option>
+                  <option value="ok">Zelená</option>
+                </select>
+              </div>
+              <div className="flex gap-2.5 mb-2.5 flex-wrap">
+                <input className="flex-1 min-w-[140px] bg-ctrl-bg2 border border-ctrl-border text-ctrl-text py-[9px] px-3 text-[13px] font-sans outline-none transition-all duration-200 focus:border-ctrl-accent focus:shadow-[0_0_0_2px_rgba(42,107,255,0.1)]" placeholder="Text oznámení..." value={newNews.body} onChange={e => setNewNews(p => ({ ...p, body: e.target.value }))} />
+              </div>
+              <div className="flex gap-2">
+                <button className="border-0 py-[9px] px-[18px] text-[11px] font-bold tracking-[2px] uppercase cursor-pointer font-sans transition-all duration-200 bg-ctrl-accent text-white hover:bg-ctrl-accent2 hover:-translate-y-px" onClick={addNews}>PŘIDAT</button>
+                <button className="border-0 py-[9px] px-[18px] text-[11px] font-bold tracking-[2px] uppercase cursor-pointer font-sans transition-all duration-200 bg-transparent border border-ctrl-border text-ctrl-text2 hover:border-ctrl-text2 hover:text-ctrl-text" onClick={() => setShowAddNews(false)}>ZRUŠIT</button>
+              </div>
+            </div>
+          )}
+
+          {news.slice(0, 5).map(n => (
+            <div key={n.id} className="py-4 px-5 flex gap-3 bg-ctrl-panel border border-ctrl-border mb-2.5 transition-all duration-200 animate-slide-in hover:border-ctrl-border2 max-[900px]:py-4 max-[900px]:px-4 max-[900px]:gap-3.5 max-[900px]:mb-3">
+              <div className={cn('w-[7px] h-[7px] mt-[5px] shrink-0', newsDotCls(n.type))} />
+              <div className="flex-1 min-w-0">
+                <div className="text-[13px] font-bold mb-0.5 max-[900px]:text-sm max-[900px]:leading-snug max-[900px]:mb-1">{n.title}</div>
+                <div className="text-xs text-ctrl-text2 leading-normal max-[900px]:text-[13px] max-[900px]:leading-relaxed">{n.body}</div>
+                <div className="font-mono text-[9px] text-ctrl-text3 mt-1 tracking-wide max-[900px]:text-[10px] max-[900px]:mt-2">{formatDate(n.created_at)} · {n.tag}</div>
+              </div>
+              {admin && <div className="text-[11px] text-ctrl-text3 cursor-pointer ml-auto py-0.5 px-1.5 transition-colors duration-200 shrink-0 hover:text-ctrl-danger" onClick={() => deleteNews(n.id)}>✕</div>}
+            </div>
+          ))}
+          {news.length === 0 && <div className="text-ctrl-text2 text-xs py-2">Žádná oznámení.</div>}
+        </section>
+
+        <section className="min-w-0">
+          <div className="flex justify-between items-center gap-3 mb-3.5 max-[900px]:mb-4">
+            <Sec className="!mb-0">KALENDÁŘ AKCÍ</Sec>
+            {admin && <button className="border-0 py-[9px] px-[18px] text-[11px] font-bold tracking-[2px] uppercase cursor-pointer font-sans transition-all duration-200 bg-ctrl-accent text-white hover:bg-ctrl-accent2 hover:-translate-y-px text-[10px] py-1.5 px-3 shrink-0" onClick={() => setShowAddEvent(v => !v)}>+ PŘIDAT</button>}
+          </div>
+
+          {showAddEvent && (
+            <div className="bg-ctrl-panel border border-ctrl-accent p-4 mb-3.5 animate-fade-in">
+              <div className="flex gap-2.5 mb-2.5 flex-wrap">
+                <input className="flex-1 min-w-[140px] bg-ctrl-bg2 border border-ctrl-border text-ctrl-text py-[9px] px-3 text-[13px] font-sans outline-none transition-all duration-200 focus:border-ctrl-accent focus:shadow-[0_0_0_2px_rgba(42,107,255,0.1)]" placeholder="Název akce..." value={newEvent.title} onChange={e => setNewEvent(p => ({ ...p, title: e.target.value }))} />
+                <select className="bg-ctrl-bg2 border border-ctrl-border text-ctrl-text2 py-[9px] px-3 text-xs font-sans outline-none cursor-pointer transition-colors duration-200 focus:border-ctrl-accent" value={newEvent.type} onChange={e => setNewEvent(p => ({ ...p, type: e.target.value }))}>
+                  <option value="event">Akce</option>
+                  <option value="deadline">Deadline</option>
+                  <option value="meeting">Schůzka</option>
+                </select>
+              </div>
+              <div className="flex gap-2.5 mb-2.5 flex-wrap">
+                <input className="flex-1 min-w-[140px] bg-ctrl-bg2 border border-ctrl-border text-ctrl-text py-[9px] px-3 text-[13px] font-sans outline-none transition-all duration-200 focus:border-ctrl-accent focus:shadow-[0_0_0_2px_rgba(42,107,255,0.1)]" type="date" value={newEvent.date} onChange={e => setNewEvent(p => ({ ...p, date: e.target.value }))} />
+                <input className="flex-1 min-w-[140px] max-w-[120px] bg-ctrl-bg2 border border-ctrl-border text-ctrl-text py-[9px] px-3 text-[13px] font-sans outline-none transition-all duration-200 focus:border-ctrl-accent focus:shadow-[0_0_0_2px_rgba(42,107,255,0.1)]" type="time" value={newEvent.time} onChange={e => setNewEvent(p => ({ ...p, time: e.target.value }))} />
+              </div>
+              <div className="flex gap-2.5 mb-2.5 flex-wrap">
+                <input className="flex-1 min-w-[140px] bg-ctrl-bg2 border border-ctrl-border text-ctrl-text py-[9px] px-3 text-[13px] font-sans outline-none transition-all duration-200 focus:border-ctrl-accent focus:shadow-[0_0_0_2px_rgba(42,107,255,0.1)]" placeholder="Popis..." value={newEvent.description} onChange={e => setNewEvent(p => ({ ...p, description: e.target.value }))} />
+              </div>
+              <div className="flex gap-2">
+                <button className="border-0 py-[9px] px-[18px] text-[11px] font-bold tracking-[2px] uppercase cursor-pointer font-sans transition-all duration-200 bg-ctrl-accent text-white hover:bg-ctrl-accent2 hover:-translate-y-px" onClick={addEvent}>PŘIDAT</button>
+                <button className="border-0 py-[9px] px-[18px] text-[11px] font-bold tracking-[2px] uppercase cursor-pointer font-sans transition-all duration-200 bg-transparent border border-ctrl-border text-ctrl-text2 hover:border-ctrl-text2 hover:text-ctrl-text" onClick={() => setShowAddEvent(false)}>ZRUŠIT</button>
+              </div>
+            </div>
+          )}
+
+          {events.slice(0, 6).map(e => (
+            <div key={e.id} className="py-4 px-5 bg-ctrl-panel border border-ctrl-border mb-2.5 transition-all duration-200 hover:border-ctrl-border2 max-[900px]:py-4 max-[900px]:px-4 max-[900px]:mb-3">
+              <div className="flex items-center justify-between gap-2 mb-2">
+                <div className="font-mono text-[11px] text-ctrl-accent tracking-wide max-[900px]:text-xs">{e.date}{e.time && ` · ${e.time}`}</div>
+                <span className={eventTypeCls[e.type] || eventTypeCls.event}>{e.type === 'event' ? 'AKCE' : e.type === 'deadline' ? 'DEADLINE' : 'SCHŮZKA'}</span>
+              </div>
+              <div className="min-w-0">
+                <div className="text-[13px] font-semibold leading-snug max-[900px]:text-sm">{e.title}</div>
+                {e.description && <div className="text-xs text-ctrl-text2 mt-1.5 leading-relaxed max-[900px]:text-[13px]">{e.description}</div>}
+              </div>
+            </div>
+          ))}
+          {events.length === 0 && <div className="text-ctrl-text2 text-xs py-2">Žádné nadcházející akce.</div>}
+        </section>
+      </div>
+    </div>
+  )
+}

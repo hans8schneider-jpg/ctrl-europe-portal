@@ -1,0 +1,72 @@
+export const TEAM_BUCKETS = [
+  'PR a komunikace', 'Sociální sítě', 'Podcast', 'Research',
+  'Grafika', 'Video', 'Mezinárodní', 'Eventy',
+]
+
+export const SPECIAL_BUCKETS = ['Rada zástupců', 'Předsednictvo']
+
+export const ALL_BUCKETS = [...TEAM_BUCKETS, ...SPECIAL_BUCKETS]
+
+export const BUCKET_AV_CLS = {
+  'PR a komunikace': 'bg-[rgba(42,107,255,0.15)] border border-[rgba(42,107,255,0.31)] text-[#2A6BFF]',
+  'Sociální sítě': 'bg-[rgba(255,184,0,0.15)] border border-[rgba(255,184,0,0.31)] text-[#ffb800]',
+  'Podcast': 'bg-[rgba(180,79,255,0.15)] border border-[rgba(180,79,255,0.31)] text-[#b44fff]',
+  'Research': 'bg-[rgba(0,201,255,0.15)] border border-[rgba(0,201,255,0.31)] text-[#00c9ff]',
+  'Grafika': 'bg-[rgba(255,107,53,0.15)] border border-[rgba(255,107,53,0.31)] text-[#ff6b35]',
+  'Video': 'bg-[rgba(255,51,102,0.15)] border border-[rgba(255,51,102,0.31)] text-ctrl-danger',
+  'Mezinárodní': 'bg-[rgba(0,229,160,0.15)] border border-[rgba(0,229,160,0.31)] text-ctrl-success',
+  'Eventy': 'bg-[rgba(0,229,160,0.15)] border border-[rgba(0,229,160,0.31)] text-ctrl-success',
+  'Rada zástupců': 'bg-[rgba(255,184,0,0.15)] border border-[rgba(255,184,0,0.31)] text-[#ffb800]',
+  'Předsednictvo': 'bg-[rgba(180,79,255,0.15)] border border-[rgba(180,79,255,0.31)] text-[#b44fff]',
+}
+
+export const bucketAvCls = (bucket) =>
+  BUCKET_AV_CLS[bucket] || 'bg-[rgba(42,107,255,0.15)] border border-[rgba(42,107,255,0.31)] text-ctrl-accent'
+
+export const BUCKET_DOT_CLS = {
+  'PR a komunikace': 'bg-[#2A6BFF]',
+  'Sociální sítě': 'bg-[#ffb800]',
+  'Podcast': 'bg-[#b44fff]',
+  'Research': 'bg-[#00c9ff]',
+  'Grafika': 'bg-[#ff6b35]',
+  'Video': 'bg-[#ff3366]',
+  'Mezinárodní': 'bg-[#00e5a0]',
+  'Eventy': 'bg-[#00e5a0]',
+  'Rada zástupců': 'bg-[#ffb800]',
+  'Předsednictvo': 'bg-[#b44fff]',
+}
+
+export const bucketDotCls = (bucket) => BUCKET_DOT_CLS[bucket] || 'bg-ctrl-accent'
+export const bucketBarCls = (bucket) => BUCKET_DOT_CLS[bucket] || 'bg-ctrl-accent'
+
+export const BUCKET_MEMBER_AV_CLS = {
+  'PR a komunikace': 'bg-[rgba(42,107,255,0.13)] border border-[rgba(42,107,255,0.27)] text-[#2A6BFF]',
+  'Sociální sítě': 'bg-[rgba(255,184,0,0.13)] border border-[rgba(255,184,0,0.27)] text-[#ffb800]',
+  'Podcast': 'bg-[rgba(180,79,255,0.13)] border border-[rgba(180,79,255,0.27)] text-[#b44fff]',
+  'Research': 'bg-[rgba(0,201,255,0.13)] border border-[rgba(0,201,255,0.27)] text-[#00c9ff]',
+  'Grafika': 'bg-[rgba(255,107,53,0.13)] border border-[rgba(255,107,53,0.27)] text-[#ff6b35]',
+  'Video': 'bg-[rgba(255,51,102,0.13)] border border-[rgba(255,51,102,0.27)] text-[#ff3366]',
+  'Mezinárodní': 'bg-[rgba(0,229,160,0.13)] border border-[rgba(0,229,160,0.27)] text-[#00e5a0]',
+  'Eventy': 'bg-[rgba(0,229,160,0.13)] border border-[rgba(0,229,160,0.27)] text-[#00e5a0]',
+  'Rada zástupců': 'bg-[rgba(255,184,0,0.13)] border border-[rgba(255,184,0,0.27)] text-[#ffb800]',
+  'Předsednictvo': 'bg-[rgba(180,79,255,0.13)] border border-[rgba(180,79,255,0.27)] text-[#b44fff]',
+}
+
+export const bucketMemberAvCls = (bucket) =>
+  BUCKET_MEMBER_AV_CLS[bucket] || 'bg-[rgba(42,107,255,0.13)] border border-[rgba(42,107,255,0.27)] text-ctrl-accent'
+
+export const BUCKET_ORGAN_BADGE_CLS = {
+  'PR a komunikace': 'bg-[rgba(42,107,255,0.13)] text-[#2A6BFF]',
+  'Sociální sítě': 'bg-[rgba(255,184,0,0.13)] text-[#ffb800]',
+  'Podcast': 'bg-[rgba(180,79,255,0.13)] text-[#b44fff]',
+  'Research': 'bg-[rgba(0,201,255,0.13)] text-[#00c9ff]',
+  'Grafika': 'bg-[rgba(255,107,53,0.13)] text-[#ff6b35]',
+  'Video': 'bg-[rgba(255,51,102,0.13)] text-[#ff3366]',
+  'Mezinárodní': 'bg-[rgba(0,229,160,0.13)] text-[#00e5a0]',
+  'Eventy': 'bg-[rgba(0,229,160,0.13)] text-[#00e5a0]',
+  'Rada zástupců': 'bg-[rgba(255,184,0,0.13)] text-[#ffb800]',
+  'Předsednictvo': 'bg-[rgba(180,79,255,0.13)] text-[#b44fff]',
+}
+
+export const bucketOrganBadgeCls = (bucket) =>
+  BUCKET_ORGAN_BADGE_CLS[bucket] || 'bg-[rgba(42,107,255,0.13)] text-ctrl-accent'
