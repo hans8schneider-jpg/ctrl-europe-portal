@@ -875,7 +875,7 @@ function Profile({ profile, members }) {
     <div className="animate-fade-in">
       <Sec>PROFIL ČLENA</Sec>
       <div className="grid gap-4 grid-cols-[260px_1fr] max-[900px]:grid-cols-1">
-        <div className="bg-ctrl-panel border border-ctrl-border p-7">
+        <div className="bg-ctrl-panel border border-ctrl-border p-7 min-w-0">
           <div className={cn('w-[72px] h-[72px] flex items-center justify-center text-[26px] font-bold font-mono mb-4 transition-transform duration-200 hover:scale-105', bucketAvCls(profile.bucket))}>
             {getInitials(profile.name)}
           </div>
@@ -900,9 +900,9 @@ function Profile({ profile, members }) {
               <div className={cn('w-[7px] h-[7px] rounded-full shrink-0', status === "active" && 'bg-ctrl-success shadow-[0_0_6px_#00e5a0]', status === "away" && 'bg-ctrl-warning', status === "needs_help" && 'bg-ctrl-danger animate-pulse')} />
               <span className="text-[13px]">{statusConfig[status].label}</span>
             </div>
-            <div className="flex gap-2 mt-2">
+            <div className="flex flex-col gap-1.5 mt-2">
               {Object.entries(statusConfig).map(([key, val]) => (
-                <div key={key} className={cn('py-1 px-2.5 font-mono text-[9px] tracking-wide uppercase cursor-pointer border transition-all duration-200 hover:border-ctrl-accent', status === key ? STATUS_OPT_CLS[key] : 'border-ctrl-border text-ctrl-text2')}
+                <div key={key} className={cn('w-full box-border py-1.5 px-2.5 font-mono text-[9px] tracking-wide uppercase cursor-pointer border transition-all duration-200 hover:border-ctrl-accent text-center', status === key ? STATUS_OPT_CLS[key] : 'border-ctrl-border text-ctrl-text2')}
                   onClick={() => updateStatus(key)}>
                   {val.label}
                 </div>
