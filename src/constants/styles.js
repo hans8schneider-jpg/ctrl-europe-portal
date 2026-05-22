@@ -32,3 +32,9 @@ export const STATUS_OPT_CLS = {
   away: 'text-ctrl-warning border-ctrl-warning',
   needs_help: 'text-ctrl-danger border-ctrl-danger',
 }
+
+export const STATUS_BADGE_CLS = {
+  active: 'bg-ctrl-success shadow-[0_0_6px_#00e5a0]',
+  away: 'bg-ctrl-warning',
+  needs_help: 'bg-ctrl-danger animate-pulse',
+}

@@ -3,8 +3,10 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { supabase } from '../supabase'
 
 import { Sec } from './ui/Sec'
+import { ChatUserAvatar } from './ChatUserAvatar'
 
-import { cn, getInitials } from '../lib/utils'
+import { cn, getInitials, isUserOnline } from '../lib/utils'
+import { useAppData } from '../context/AppDataContext'
 
 import { formatDate } from '../lib/format'
 
@@ -13,8 +15,11 @@ import { isAdmin } from '../lib/permissions'
 
 
 export function Chat({ profile, activeBucket }) {
+  const { members, touchLastSeen } = useAppData()
 
   const [messages, setMessages] = useState([])
+  const [presenceByUserId, setPresenceByUserId] = useState({})
+  const [, setPresenceTick] = useState(0)
 
   const [input, setInput] = useState('')
 
@@ -92,7 +97,57 @@ export function Chat({ profile, activeBucket }) {
 
   }, [loadMessages, bucket])
 
+  useEffect(() => {
+    const map = {}
+    members.forEach(m => {
+      map[String(m.id)] = { status: m.status || 'active', last_seen: m.last_seen }
+    })
+    setPresenceByUserId(map)
+  }, [members])
 
+  useEffect(() => {
+    const channel = supabase
+      .channel('chat-profile-status')
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'profiles' }, payload => {
+        const row = payload.new
+        if (!row?.id) return
+        setPresenceByUserId(prev => {
+          const id = String(row.id)
+          const cur = prev[id] || {}
+          return {
+            ...prev,
+            [id]: {
+              status: row.status ?? cur.status ?? 'active',
+              last_seen: row.last_seen !== undefined ? row.last_seen : cur.last_seen,
+            },
+          }
+        })
+      })
+      .subscribe()
+    return () => { supabase.removeChannel(channel) }
+  }, [])
+
+  useEffect(() => {
+    const tick = setInterval(() => setPresenceTick(t => t + 1), 60000)
+    return () => clearInterval(tick)
+  }, [])
+
+  const getAuthorPresence = (authorId) => {
+    const id = String(authorId)
+    const fromMembers = presenceByUserId[id]
+    if (id === String(profile.id)) {
+      return {
+        status: fromMembers?.status ?? profile.status ?? 'active',
+        last_seen: fromMembers?.last_seen ?? profile.last_seen,
+        isOnline: true,
+      }
+    }
+    return {
+      status: fromMembers?.status ?? 'active',
+      last_seen: fromMembers?.last_seen,
+      isOnline: isUserOnline(fromMembers?.last_seen),
+    }
+  }
 
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [messages])
 
@@ -116,7 +171,7 @@ export function Chat({ profile, activeBucket }) {
 
     if (!input.trim() || !canWrite) return
 
-    await supabase.from('messages').insert([{
+    const { error } = await supabase.from('messages').insert([{
 
       text: input, author_id: profile.id,
 
@@ -124,7 +179,10 @@ export function Chat({ profile, activeBucket }) {
 
     }])
 
-    setInput('')
+    if (!error) {
+      touchLastSeen()
+      setInput('')
+    }
 
   }
 
@@ -187,6 +245,7 @@ export function Chat({ profile, activeBucket }) {
         {messages.map(m => {
 
           const isOwn = String(m.author_id) === String(profile.id)
+          const { status, isOnline } = getAuthorPresence(m.author_id)
 
           return (
 
@@ -205,13 +264,11 @@ export function Chat({ profile, activeBucket }) {
             >
 
               {!isOwn && (
-
-                <div className="w-[30px] h-[30px] shrink-0 flex items-center justify-center text-[11px] font-bold font-mono border bg-ctrl-panel3 text-ctrl-text2 border-ctrl-border">
-
-                  {m.author_initials}
-
-                </div>
-
+                <ChatUserAvatar
+                  initials={m.author_initials}
+                  status={status}
+                  isOnline={isOnline}
+                />
               )}
 
               <div
@@ -309,13 +366,12 @@ export function Chat({ profile, activeBucket }) {
               </div>
 
               {isOwn && (
-
-                <div className="w-[30px] h-[30px] shrink-0 flex items-center justify-center text-[11px] font-bold font-mono border bg-ctrl-accent text-white border-ctrl-accent">
-
-                  {m.author_initials}
-
-                </div>
-
+                <ChatUserAvatar
+                  initials={m.author_initials}
+                  isOwn
+                  status={status}
+                  isOnline={isOnline}
+                />
               )}
 
             </div>

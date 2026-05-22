@@ -1,7 +1,9 @@
 import { createPortal } from 'react-dom'
-import { cn, getInitials } from '../lib/utils'
+import { cn, getInitials, isUserOnline } from '../lib/utils'
+import { StatusBadge } from './StatusBadge'
 import { bucketAvCls } from '../constants/buckets'
 import { ROLE_LABELS, roleBadgeCls } from '../constants/roles'
+import { getStatusMeta } from '../constants/status'
 
 export function MemberModal({ member, tasks, onClose }) {
   if (!member) return null
@@ -21,7 +23,9 @@ export function MemberModal({ member, tasks, onClose }) {
     : 'neznámo'
 
   const roleLabel = ROLE_LABELS[member.layer] || member.layer
-  const isOnline = member.last_seen && (Date.now() - new Date(member.last_seen)) < 300000
+  const isOnline = isUserOnline(member.last_seen)
+  const memberStatus = member.status || 'active'
+  const statusMeta = getStatusMeta(memberStatus)
   const buckets = [member.bucket, member.secondary_bucket].filter(Boolean).join(' · ')
 
   return createPortal(
@@ -53,9 +57,12 @@ export function MemberModal({ member, tasks, onClose }) {
               >
                 {getInitials(member.name)}
               </div>
-              {isOnline && (
-                <span className="absolute bottom-0.5 right-0.5 w-3.5 h-3.5 rounded-full bg-ctrl-success border-2 border-ctrl-panel shadow-[0_0_8px_#00e5a0]" />
-              )}
+              <StatusBadge
+                status={memberStatus}
+                isOnline={isOnline}
+                size="lg"
+                className="absolute bottom-0.5 right-0.5"
+              />
             </div>
 
             <div className="flex-1 min-w-0 pt-1">
@@ -98,24 +105,33 @@ export function MemberModal({ member, tasks, onClose }) {
             </div>
           </div>
 
-          {/* Activity */}
-          <div className="mt-3 py-3 px-4 bg-ctrl-bg2/60 border border-ctrl-border rounded-md flex items-center gap-3">
-            <div
-              className={cn(
-                'w-2 h-2 rounded-full shrink-0',
-                isOnline ? 'bg-ctrl-success shadow-[0_0_8px_#00e5a0]' : 'bg-ctrl-text3'
-              )}
-            />
-            <div className="flex-1 min-w-0">
-              <div className="font-mono text-[9px] text-ctrl-text2 tracking-[2px] uppercase">
-                Naposledy online
+          {/* Status & activity */}
+          <div className="mt-3 py-3 px-4 bg-ctrl-bg2/60 border border-ctrl-border rounded-md flex flex-col gap-3">
+            <div className="flex items-center gap-3">
+              <StatusBadge status={memberStatus} isOnline={isOnline} size="sm" />
+              <div className="flex-1 min-w-0">
+                <div className="font-mono text-[9px] text-ctrl-text2 tracking-[2px] uppercase">
+                  Stav
+                </div>
+                <div
+                  className={cn(
+                    'text-[13px] font-medium mt-0.5',
+                    isOnline ? statusMeta.textCls : 'text-ctrl-text3'
+                  )}
+                >
+                  {statusMeta.label}
+                  {!isOnline && (
+                    <span className="text-ctrl-text3 font-normal"> · offline</span>
+                  )}
+                </div>
               </div>
-              <div
-                className={cn(
-                  'text-[13px] font-medium mt-0.5',
-                  isOnline ? 'text-ctrl-success' : 'text-ctrl-text'
-                )}
-              >
+            </div>
+            <div className="h-px bg-ctrl-border" />
+            <div>
+              <div className="font-mono text-[9px] text-ctrl-text2 tracking-[2px] uppercase">
+                Naposledy aktivní
+              </div>
+              <div className="text-[13px] font-medium mt-0.5 text-ctrl-text">
                 {lastSeen}
               </div>
             </div>

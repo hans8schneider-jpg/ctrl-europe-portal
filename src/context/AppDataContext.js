@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useMemo, useState } from 'react'
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
 import { supabase } from '../supabase'
 import { isAdmin } from '../lib/permissions'
 
@@ -12,10 +12,19 @@ export function AppDataProvider({ session, children }) {
   const [members, setMembers] = useState([])
   const [loading, setLoading] = useState(true)
 
+  const touchLastSeen = useCallback(async () => {
+    if (!session?.user?.id) return
+    const now = new Date().toISOString()
+    await supabase.from('profiles').update({ last_seen: now }).eq('id', session.user.id)
+    const userId = session.user.id
+    setProfile(prev => (prev && String(prev.id) === String(userId) ? { ...prev, last_seen: now } : prev))
+    setMembers(prev => prev.map(m => (String(m.id) === String(userId) ? { ...m, last_seen: now } : m)))
+  }, [session])
+
   useEffect(() => {
     if (!session) return
     const load = async () => {
-      await supabase.from('profiles').update({ last_seen: new Date().toISOString() }).eq('id', session.user.id)
+      await touchLastSeen()
 
       const [{ data: prof }, { data: taskData }, { data: newsData }, { data: eventData }, { data: memberData }] = await Promise.all([
         supabase.from('profiles').select('*').eq('id', session.user.id).single(),
@@ -32,7 +41,7 @@ export function AppDataProvider({ session, children }) {
       setLoading(false)
     }
     load()
-  }, [session])
+  }, [session, touchLastSeen])
 
   const myOpenCount = useMemo(() => {
     if (!profile) return 0
@@ -50,6 +59,7 @@ export function AppDataProvider({ session, children }) {
     setNews,
     events,
     members,
+    touchLastSeen,
     loading,
     myOpenCount,
     admin,

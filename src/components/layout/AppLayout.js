@@ -7,6 +7,7 @@ import { bucketDotCls, bucketMemberAvCls } from '../../constants/buckets'
 import { bucketPath, bucketToSlug } from '../../lib/bucketSlug'
 import { getAccessibleBuckets, isAdmin } from '../../lib/permissions'
 import { ROLE_LABELS, roleBadgeCls } from '../../constants/roles'
+import { getStatusMeta } from '../../constants/status'
 import { useAppData } from '../../context/AppDataContext'
 import { MobileBottomNav } from '../MobileBottomNav'
 import { IconAdmin, IconCells, IconDashboard, IconProfile } from '../icons/NavIcons'
@@ -28,9 +29,19 @@ const PAGE_TITLES = {
 export function AppLayout() {
   const navigate = useNavigate()
   const location = useLocation()
-  const { profile, tasks, myOpenCount, admin } = useAppData()
+  const { profile, tasks, myOpenCount, admin, touchLastSeen } = useAppData()
   const [profileMenuOpen, setProfileMenuOpen] = useState(false)
   const profileMenuRef = useRef(null)
+  const isFirstPath = useRef(true)
+
+  useEffect(() => {
+    if (!profile) return
+    if (isFirstPath.current) {
+      isFirstPath.current = false
+      return
+    }
+    touchLastSeen()
+  }, [location.pathname, profile, touchLastSeen])
 
   useEffect(() => {
     if (!profileMenuOpen) return
@@ -67,12 +78,7 @@ export function AppLayout() {
     navigate('/')
   }
 
-  const statusConfig = {
-    active: { label: 'Aktivní' },
-    away: { label: 'Zaneprázdněn' },
-    needs_help: { label: 'Potřebuji pomoc' },
-  }
-  const myStatus = statusConfig[profile.status || 'active']
+  const myStatus = getStatusMeta(profile.status || 'active')
 
   const navLinkCls = ({ isActive }) =>
     cn(
