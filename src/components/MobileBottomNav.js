@@ -5,6 +5,7 @@ import { TEAM_BUCKETS, SPECIAL_BUCKETS } from '../constants/buckets'
 import { bucketDotCls } from '../constants/buckets'
 import { bucketPath } from '../lib/bucketSlug'
 import { useAppData } from '../context/AppDataContext'
+import { IconAdmin, IconCells, IconDashboard, IconMenu, IconProfile } from './icons/NavIcons'
 
 export function MobileBottomNav({ accessibleBuckets, activeBucketSlug, tasks }) {
   const navigate = useNavigate()
@@ -16,10 +17,10 @@ export function MobileBottomNav({ accessibleBuckets, activeBucketSlug, tasks }) 
   const isBucketRoute = Boolean(activeBucketSlug)
 
   const navItems = [
-    { path: '/', label: 'Hlavní', icon: '⊞', end: true },
-    { path: '/bunky', label: 'Buňky', icon: '◈' },
-    { path: '/profil', label: 'Profil', icon: '◉' },
-    ...(admin ? [{ path: '/admin', label: 'Admin', icon: '⚙' }] : []),
+    { path: '/', label: 'Hlavní', Icon: IconDashboard, end: true },
+    { path: '/bunky', label: 'Buňky', Icon: IconCells },
+    { path: '/profil', label: 'Profil', Icon: IconProfile },
+    ...(admin ? [{ path: '/admin', label: 'Admin', Icon: IconAdmin }] : []),
   ]
 
   const isNavActive = (itemPath, end) => {
@@ -46,7 +47,7 @@ export function MobileBottomNav({ accessibleBuckets, activeBucketSlug, tasks }) 
             {n.path === '/' && myOpenCount > 0 && (
               <span className="absolute top-[5px] right-2 bg-ctrl-danger text-white text-[8px] min-w-[14px] h-3.5 flex items-center justify-center rounded-[7px]">{myOpenCount}</span>
             )}
-            <span className="text-xl leading-none">{n.icon}</span>
+            <n.Icon className="w-5 h-5" />
             <span className="font-mono text-[8px] tracking-wide uppercase">{n.label}</span>
           </div>
         ))}
@@ -57,7 +58,7 @@ export function MobileBottomNav({ accessibleBuckets, activeBucketSlug, tasks }) 
           )}
           onClick={() => setDrawerOpen(v => !v)}
         >
-          <span className="text-xl leading-none">☰</span>
+          <IconMenu />
           <span className="font-mono text-[8px] tracking-wide uppercase">Menu</span>
         </div>
       </div>

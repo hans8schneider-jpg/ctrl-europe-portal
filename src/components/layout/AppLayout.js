@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from 'react'
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { supabase } from '../../supabase'
 import { cn, getInitials } from '../../lib/utils'
@@ -8,12 +9,13 @@ import { getAccessibleBuckets, isAdmin } from '../../lib/permissions'
 import { ROLE_LABELS, roleBadgeCls } from '../../constants/roles'
 import { useAppData } from '../../context/AppDataContext'
 import { MobileBottomNav } from '../MobileBottomNav'
+import { IconAdmin, IconCells, IconDashboard, IconProfile } from '../icons/NavIcons'
 
 const NAV_MAIN = [
-  { path: '/', label: 'Dashboard', icon: '⊞', end: true },
-  { path: '/bunky', label: 'Buňky', icon: '◈' },
-  { path: '/profil', label: 'Profil', icon: '◉' },
-  { path: '/admin', label: 'Admin', icon: '⚙', adminOnly: true },
+  { path: '/', label: 'Dashboard', Icon: IconDashboard, end: true },
+  { path: '/bunky', label: 'Buňky', Icon: IconCells },
+  { path: '/profil', label: 'Profil', Icon: IconProfile },
+  { path: '/admin', label: 'Admin', Icon: IconAdmin, adminOnly: true },
 ]
 
 const PAGE_TITLES = {
@@ -27,6 +29,26 @@ export function AppLayout() {
   const navigate = useNavigate()
   const location = useLocation()
   const { profile, tasks, myOpenCount, admin } = useAppData()
+  const [profileMenuOpen, setProfileMenuOpen] = useState(false)
+  const profileMenuRef = useRef(null)
+
+  useEffect(() => {
+    if (!profileMenuOpen) return
+    const handleClickOutside = (e) => {
+      if (profileMenuRef.current && !profileMenuRef.current.contains(e.target)) {
+        setProfileMenuOpen(false)
+      }
+    }
+    const handleEscape = (e) => {
+      if (e.key === 'Escape') setProfileMenuOpen(false)
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    document.addEventListener('keydown', handleEscape)
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+      document.removeEventListener('keydown', handleEscape)
+    }
+  }, [profileMenuOpen])
 
   const accessibleBuckets = getAccessibleBuckets(profile)
   const teamBuckets = accessibleBuckets.filter(b => TEAM_BUCKETS.includes(b))
@@ -75,25 +97,11 @@ export function AppLayout() {
           <div className="font-mono text-[9px] tracking-[2px] text-ctrl-text2 uppercase mt-0.5">Members Portal</div>
         </div>
 
-        <div className="py-3.5 px-5 border-b border-ctrl-border">
-          <div className={cn('w-9 h-9 flex items-center justify-center text-[13px] font-bold font-mono mb-2 transition-transform duration-200 hover:scale-105', bucketMemberAvCls(profile.bucket))}>
-            {getInitials(profile.name)}
-          </div>
-          <div className="text-[13px] font-bold">{profile.name}</div>
-          <div className={cn('inline-block font-mono text-[9px] py-0.5 px-[7px] tracking-wide uppercase mt-0.5', roleBadgeCls(profile.layer))}>
-            {ROLE_LABELS[profile.layer]}
-          </div>
-          <div className="flex items-center gap-1.5 mt-2">
-            <div className={cn('w-[7px] h-[7px] rounded-full shrink-0', (profile.status || 'active') === 'active' && 'bg-ctrl-success shadow-[0_0_6px_#00e5a0]', profile.status === 'away' && 'bg-ctrl-warning', profile.status === 'needs_help' && 'bg-ctrl-danger animate-pulse')} />
-            <span className="font-mono text-[9px] text-ctrl-text2 tracking-wide">{myStatus.label}</span>
-          </div>
-        </div>
-
         <nav className="flex-1 py-2.5 overflow-y-auto">
           <div className="py-2.5 px-5 pb-1 font-mono text-[8px] tracking-[3px] text-ctrl-text3 uppercase">Navigace</div>
           {NAV_MAIN.filter(n => !n.adminOnly || admin).map(n => (
             <NavLink key={n.path} to={n.path} end={n.end} className={navLinkCls}>
-              <span className="text-sm w-[18px] text-center shrink-0">{n.icon}</span>
+              <n.Icon />
               <span>{n.label}</span>
               {n.path === '/' && myOpenCount > 0 && (
                 <span className="absolute right-3.5 top-1/2 -translate-y-1/2 bg-ctrl-danger text-white text-[9px] min-w-4 h-4 flex items-center justify-center rounded-lg font-mono animate-badge-pop">{myOpenCount}</span>
@@ -126,9 +134,58 @@ export function AppLayout() {
           )}
         </nav>
 
-        <div className="py-3.5 px-5 border-t border-ctrl-border">
-          <button className="w-full bg-transparent border border-ctrl-border text-ctrl-text2 py-[9px] text-[10px] tracking-[2px] uppercase cursor-pointer font-mono transition-all duration-200 hover:border-ctrl-danger hover:text-ctrl-danger hover:bg-[rgba(255,51,102,0.05)]" onClick={handleLogout}>
-            ODHLÁSIT SE
+        <div className="border-t border-ctrl-border relative shrink-0" ref={profileMenuRef}>
+          {profileMenuOpen && (
+            <div className="absolute bottom-full left-0 right-0 bg-ctrl-panel border-t border-ctrl-border">
+              <button
+                type="button"
+                className="w-full flex items-center gap-2.5 py-2.5 px-5 bg-transparent border-0 border-b border-ctrl-border text-ctrl-text2 text-xs font-semibold tracking-wide uppercase cursor-pointer font-mono text-left transition-all duration-200 hover:text-ctrl-text hover:bg-[rgba(42,107,255,0.05)]"
+                onClick={() => {
+                  setProfileMenuOpen(false)
+                  navigate('/profil')
+                }}
+              >
+                <IconProfile />
+                <span>Profil</span>
+              </button>
+              <button
+                type="button"
+                className="w-full bg-transparent border-0 text-ctrl-text2 py-2.5 px-5 text-[10px] tracking-[2px] uppercase cursor-pointer font-mono text-left transition-all duration-200 hover:text-ctrl-danger hover:bg-[rgba(255,51,102,0.05)]"
+                onClick={() => {
+                  setProfileMenuOpen(false)
+                  handleLogout()
+                }}
+              >
+                ODHLÁSIT SE
+              </button>
+            </div>
+          )}
+          <button
+            type="button"
+            className={cn(
+              'w-full flex items-center gap-2.5 py-3.5 px-5 bg-transparent border-0 cursor-pointer text-left transition-all duration-200 hover:bg-[rgba(42,107,255,0.05)]',
+              profileMenuOpen && 'bg-[rgba(42,107,255,0.08)]',
+              location.pathname === '/profil' && !profileMenuOpen && 'bg-[rgba(42,107,255,0.1)]'
+            )}
+            onClick={() => setProfileMenuOpen(open => !open)}
+            aria-expanded={profileMenuOpen}
+            aria-haspopup="menu"
+          >
+            <div className={cn('w-9 h-9 shrink-0 flex items-center justify-center text-[13px] font-bold font-mono', bucketMemberAvCls(profile.bucket))}>
+              {getInitials(profile.name)}
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="text-[13px] font-bold truncate">{profile.name}</div>
+              <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                <span className={cn('font-mono text-[9px] py-0.5 px-[7px] tracking-wide uppercase', roleBadgeCls(profile.layer))}>
+                  {ROLE_LABELS[profile.layer]}
+                </span>
+                <div className="flex items-center gap-1.5">
+                  <div className={cn('w-[7px] h-[7px] rounded-full shrink-0', (profile.status || 'active') === 'active' && 'bg-ctrl-success shadow-[0_0_6px_#00e5a0]', profile.status === 'away' && 'bg-ctrl-warning', profile.status === 'needs_help' && 'bg-ctrl-danger animate-pulse')} />
+                  <span className="font-mono text-[9px] text-ctrl-text2 tracking-wide">{myStatus.label}</span>
+                </div>
+              </div>
+            </div>
           </button>
         </div>
       </aside>
