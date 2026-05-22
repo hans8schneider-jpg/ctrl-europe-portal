@@ -900,9 +900,9 @@ function Profile({ profile, members }) {
               <div className={cn('w-[7px] h-[7px] rounded-full shrink-0', status === "active" && 'bg-ctrl-success shadow-[0_0_6px_#00e5a0]', status === "away" && 'bg-ctrl-warning', status === "needs_help" && 'bg-ctrl-danger animate-pulse')} />
               <span className="text-[13px]">{statusConfig[status].label}</span>
             </div>
-            <div className="flex flex-col gap-1.5 mt-2">
+            <div className="flex flex-col gap-1.5 mt-2 max-[900px]:flex-row max-[900px]:flex-wrap max-[900px]:items-start max-[900px]:gap-1.5 max-[900px]:mt-1.5">
               {Object.entries(statusConfig).map(([key, val]) => (
-                <div key={key} className={cn('w-full box-border py-1.5 px-2.5 font-mono text-[9px] tracking-wide uppercase cursor-pointer border transition-all duration-200 hover:border-ctrl-accent text-center', status === key ? STATUS_OPT_CLS[key] : 'border-ctrl-border text-ctrl-text2')}
+                <div key={key} className={cn('w-full box-border py-1.5 px-2.5 font-mono text-[9px] tracking-wide uppercase cursor-pointer border transition-all duration-200 hover:border-ctrl-accent text-center max-[900px]:w-auto max-[900px]:py-1 max-[900px]:px-2 max-[900px]:text-left', status === key ? STATUS_OPT_CLS[key] : 'border-ctrl-border text-ctrl-text2')}
                   onClick={() => updateStatus(key)}>
                   {val.label}
                 </div>
