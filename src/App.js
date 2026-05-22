@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
+import { createPortal } from 'react-dom'
 import { supabase } from './supabase'
 const cn = (...parts) => parts.filter(Boolean).join(' ')
 
@@ -598,8 +599,11 @@ function MemberModal({ member, tasks, onClose }) {
 
   const isOnline = member.last_seen && (Date.now() - new Date(member.last_seen)) < 300000
 
-  return (
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-[rgba(0,0,0,0.7)] backdrop-blur-sm" onClick={onClose}>
+  return createPortal(
+    <div
+      className="fixed top-[54px] left-[230px] right-0 bottom-0 z-[90] flex items-center justify-center p-4 bg-[rgba(0,0,0,0.7)] backdrop-blur-sm max-[900px]:left-0 max-[900px]:top-[50px] max-[900px]:bottom-[70px]"
+      onClick={onClose}
+    >
       <div className="bg-ctrl-panel border border-ctrl-border rounded w-full max-w-[480px] max-h-[85vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
 
         <div className="py-7 px-7 pb-5 border-b border-ctrl-border">
@@ -667,7 +671,8 @@ function MemberModal({ member, tasks, onClose }) {
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }
 
@@ -692,9 +697,9 @@ function BucketView({ profile, bucket, tasks, setTasks, members }) {
               {getInitials(m.name)}
             </div>
           ))}
-          {selectedMember && <MemberModal member={selectedMember} tasks={tasks} onClose={() => setSelectedMember(null)} />}
         </div>
       </div>
+      {selectedMember && <MemberModal member={selectedMember} tasks={tasks} onClose={() => setSelectedMember(null)} />}
 
       <div className="flex gap-0 mb-5 border-b border-ctrl-border">
         <div className={cn('py-2.5 px-5 font-mono text-[10px] tracking-[2px] uppercase cursor-pointer text-ctrl-text2 border-b-2 border-transparent -mb-px transition-all duration-200 hover:text-ctrl-text', view === 'tasks' && 'text-ctrl-accent border-b-ctrl-accent')} onClick={() => setView('tasks')}>ÚKOLY</div>
