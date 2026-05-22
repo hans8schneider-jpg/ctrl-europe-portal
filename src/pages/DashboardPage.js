@@ -57,7 +57,7 @@ export function DashboardPage() {
         <div className="text-[22px] font-extrabold mb-1">
           Vítej zpět, {profile.name.split(' ')[0]} 👋
         </div>
-        <div className="font-mono text-[11px] text-ctrl-accent tracking-[2px] opacity-60 mt-1 max-[900px]:text-[10px]">"Take control before someone else does."</div>
+        <div className="font-mono text-[11px] text-ctrl-accent tracking-[2px] mt-1 max-[900px]:text-[10px]">"Take control before someone else does."</div>
       </div>
 
       <div className="grid grid-cols-4 gap-3 mb-6 max-[900px]:grid-cols-2 max-[900px]:gap-2">

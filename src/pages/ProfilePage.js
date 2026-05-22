@@ -91,7 +91,7 @@ export function ProfilePage() {
               { name: 'GDPR — Zásady zpracování osobních údajů', desc: 'Jak zpracováváme tvé osobní údaje', icon: '🔒' },
               { name: 'Členský závazek', desc: 'Vzor členského závazku spolku', icon: '✍️' },
             ].map(doc => (
-              <div key={doc.name} className="flex items-center gap-3 py-3 border-b border-ctrl-border cursor-default opacity-70">
+              <div key={doc.name} className="flex items-center gap-3 py-3 border-b border-ctrl-border cursor-default">
                 <span className="text-lg">{doc.icon}</span>
                 <div className="flex-1 min-w-0">
                   <div className="text-[13px] font-semibold mb-0.5">{doc.name}</div>

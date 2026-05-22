@@ -89,7 +89,7 @@ export function MobileBottomNav({ accessibleBuckets, activeBucketSlug, tasks }) 
             </>
           )}
           <div className="pt-3">
-            <div className="flex items-center gap-3 py-3.5 px-3 cursor-pointer rounded-lg transition-colors duration-150 mb-0.5 active:bg-[rgba(42,107,255,0.1)] opacity-50" onClick={() => setDrawerOpen(false)}>
+            <div className="flex items-center gap-3 py-3.5 px-3 cursor-pointer rounded-lg transition-colors duration-150 mb-0.5 active:bg-[rgba(42,107,255,0.1)] text-ctrl-text2" onClick={() => setDrawerOpen(false)}>
               <span className="text-[13px] text-ctrl-text2">Zavřít</span>
             </div>
           </div>
