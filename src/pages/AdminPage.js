@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '../supabase'
 import { cn, getInitials } from '../lib/utils'
 import { formatDate, formatTime } from '../lib/format'
@@ -6,6 +6,7 @@ import { ALL_BUCKETS, bucketBarCls, bucketMemberAvCls } from '../constants/bucke
 import { ROLE_LABELS, roleBadgeCls } from '../constants/roles'
 import { lastSeenCls } from '../constants/styles'
 import { Sec } from '../components/ui/Sec'
+import { MemberModal } from '../components/MemberModal'
 import { isAdmin } from '../lib/permissions'
 import { useAppData } from '../context/AppDataContext'
 
@@ -15,10 +16,30 @@ const REPORT_TYPE_CLS = {
   idea: 'bg-ctrl-warning/15 text-ctrl-warning border-ctrl-warning/40',
 }
 
+const LAYER_FILTER_ORDER = [
+  'admin',
+  'developer',
+  'predsednictvo',
+  'zastupce_predsednictva',
+  'vedouci',
+  'clen',
+  'pozorovatel',
+]
+
+const filterInputCls =
+  'bg-ctrl-bg2 border border-ctrl-border text-ctrl-text py-[9px] px-3 text-[13px] font-sans outline-none transition-all duration-200 focus:border-ctrl-accent focus:shadow-[0_0_0_2px_rgba(42,107,255,0.1)]'
+
+const filterSelectCls =
+  'bg-ctrl-bg2 border border-ctrl-border text-ctrl-text2 py-[9px] px-3 text-xs font-sans outline-none cursor-pointer transition-colors duration-200 focus:border-ctrl-accent min-w-[140px]'
+
 export function AdminPage() {
-  const { members, profile } = useAppData()
+  const { members, profile, tasks } = useAppData()
   const fullAdmin = isAdmin(profile.layer)
   const [activeTab, setActiveTab] = useState('members')
+  const [nameQuery, setNameQuery] = useState('')
+  const [bucketFilter, setBucketFilter] = useState('')
+  const [layerFilter, setLayerFilter] = useState('')
+  const [selectedMember, setSelectedMember] = useState(null)
   const [reports, setReports] = useState([])
   const [reportsLoading, setReportsLoading] = useState(false)
 
@@ -52,6 +73,24 @@ export function AdminPage() {
 
   const maxActive = Math.max(...bucketStats.map(s => s.active), 1)
 
+  const membersFiltersActive = Boolean(nameQuery.trim() || bucketFilter || layerFilter)
+
+  const filteredMembers = useMemo(() => {
+    const q = nameQuery.trim().toLowerCase()
+    return members.filter(m => {
+      if (q && !m.name?.toLowerCase().includes(q)) return false
+      if (bucketFilter && m.bucket !== bucketFilter && m.secondary_bucket !== bucketFilter) return false
+      if (layerFilter && m.layer !== layerFilter) return false
+      return true
+    })
+  }, [members, nameQuery, bucketFilter, layerFilter])
+
+  const clearMembersFilters = () => {
+    setNameQuery('')
+    setBucketFilter('')
+    setLayerFilter('')
+  }
+
   return (
     <div className="animate-fade-in">
       <div className="flex items-center gap-3 mb-5">
@@ -76,8 +115,68 @@ export function AdminPage() {
 
       {activeTab === 'members' && (
         <div>
-          {members.map(m => (
-            <div key={m.id} className="py-3 px-4 flex items-center gap-3 bg-ctrl-panel border border-ctrl-border mb-2 transition-all duration-200 hover:border-ctrl-border2 max-[900px]:flex-col max-[900px]:items-stretch max-[900px]:gap-2.5 max-[900px]:py-3.5 max-[900px]:px-3.5">
+          <div className="flex flex-wrap gap-2.5 mb-3 items-end">
+            <input
+              type="search"
+              className={cn(filterInputCls, 'flex-1 min-w-[180px]')}
+              placeholder="Hledat podle jména..."
+              value={nameQuery}
+              onChange={e => setNameQuery(e.target.value)}
+            />
+            <select
+              className={filterSelectCls}
+              value={bucketFilter}
+              onChange={e => setBucketFilter(e.target.value)}
+            >
+              <option value="">Všechny buňky</option>
+              {ALL_BUCKETS.map(b => (
+                <option key={b} value={b}>{b}</option>
+              ))}
+            </select>
+            <select
+              className={filterSelectCls}
+              value={layerFilter}
+              onChange={e => setLayerFilter(e.target.value)}
+            >
+              <option value="">Všechny vrstvy</option>
+              {LAYER_FILTER_ORDER.map(layer => (
+                <option key={layer} value={layer}>{ROLE_LABELS[layer]}</option>
+              ))}
+            </select>
+            {membersFiltersActive && (
+              <button
+                type="button"
+                className="font-mono text-[10px] tracking-[1px] uppercase text-ctrl-text2 py-[9px] px-3 border border-ctrl-border bg-transparent cursor-pointer transition-colors duration-200 hover:text-ctrl-text hover:border-ctrl-border2 shrink-0"
+                onClick={clearMembersFilters}
+              >
+                Zrušit filtry
+              </button>
+            )}
+          </div>
+          <div className="font-mono text-[10px] tracking-[1px] uppercase text-ctrl-text3 mb-3">
+            {membersFiltersActive
+              ? `${filteredMembers.length} z ${members.length} členů`
+              : `${members.length} členů`}
+          </div>
+          {filteredMembers.length === 0 && (
+            <p className="text-[13px] text-ctrl-text2 py-6 text-center">
+              {membersFiltersActive ? 'Žádný člen neodpovídá filtrům.' : 'Zatím žádní členové.'}
+            </p>
+          )}
+          {filteredMembers.map(m => (
+            <div
+              key={m.id}
+              role="button"
+              tabIndex={0}
+              className="py-3 px-4 flex items-center gap-3 bg-ctrl-panel border border-ctrl-border mb-2 transition-all duration-200 hover:border-ctrl-border2 cursor-pointer max-[900px]:flex-col max-[900px]:items-stretch max-[900px]:gap-2.5 max-[900px]:py-3.5 max-[900px]:px-3.5"
+              onClick={() => setSelectedMember(m)}
+              onKeyDown={e => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault()
+                  setSelectedMember(m)
+                }
+              }}
+            >
               <div className="flex items-center gap-3 min-w-0 flex-1 max-[900px]:w-full">
                 <div className={cn('w-[34px] h-[34px] flex items-center justify-center text-xs font-bold font-mono shrink-0', bucketMemberAvCls(m.bucket))}>
                   {getInitials(m.name)}
@@ -190,6 +289,14 @@ export function AdminPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {selectedMember && (
+        <MemberModal
+          member={selectedMember}
+          tasks={tasks}
+          onClose={() => setSelectedMember(null)}
+        />
       )}
     </div>
   )
