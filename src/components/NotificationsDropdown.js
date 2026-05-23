@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { cn } from '../lib/utils'
 import { formatTime } from '../lib/format'
+import { TextWithLinks } from './TextWithLinks'
 import { bucketPath } from '../lib/bucketSlug'
 import { IconBell } from './icons/NavIcons'
 
@@ -114,7 +115,7 @@ export function NotificationsDropdown({ notifications = [], onMarkAllRead }) {
                       onClick={() => handleNotificationClick(n)}
                     >
                       {n.title && <div className="font-semibold text-ctrl-text mb-0.5">{n.title}</div>}
-                      {n.body && <div className="text-ctrl-text2 text-xs leading-relaxed line-clamp-2">{n.body}</div>}
+                      {n.body && <TextWithLinks text={n.body} className="text-ctrl-text2 text-xs leading-relaxed line-clamp-2" />}
                       <div className="text-ctrl-text3 text-[10px] font-mono mt-1 tracking-wide">
                         {formatTime(n.created_at)}
                         {n.bucket_target && ` · ${n.bucket_target}`}

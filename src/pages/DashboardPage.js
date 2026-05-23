@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { supabase } from '../supabase'
 import { Sec } from '../components/ui/Sec'
+import { TextWithLinks } from '../components/TextWithLinks'
 import { cn } from '../lib/utils'
 import { formatDate } from '../lib/format'
 import { isAdmin } from '../lib/permissions'
@@ -109,7 +110,7 @@ export function DashboardPage() {
                 </select>
               </div>
               <div className="flex gap-2.5 mb-2.5 flex-wrap">
-                <input className="flex-1 min-w-[140px] bg-ctrl-bg2 border border-ctrl-border text-ctrl-text py-[9px] px-3 text-[13px] font-sans outline-none transition-all duration-200 focus:border-ctrl-accent focus:shadow-[0_0_0_2px_rgba(42,107,255,0.1)]" placeholder="Text oznámení..." value={newNews.body} onChange={e => setNewNews(p => ({ ...p, body: e.target.value }))} />
+                <input className="flex-1 min-w-[140px] bg-ctrl-bg2 border border-ctrl-border text-ctrl-text py-[9px] px-3 text-[13px] font-sans outline-none transition-all duration-200 focus:border-ctrl-accent focus:shadow-[0_0_0_2px_rgba(42,107,255,0.1)]" placeholder="Text oznámení... (odkaz: [text](https://...))" value={newNews.body} onChange={e => setNewNews(p => ({ ...p, body: e.target.value }))} />
               </div>
               <div className="flex gap-2">
                 <button className="border-0 py-[9px] px-[18px] text-[11px] font-bold tracking-[2px] uppercase cursor-pointer font-sans transition-all duration-200 bg-ctrl-accent text-white hover:bg-ctrl-accent2 hover:-translate-y-px" onClick={addNews}>PŘIDAT</button>
@@ -123,7 +124,7 @@ export function DashboardPage() {
               <div className={cn('w-[7px] h-[7px] mt-[5px] shrink-0', newsDotCls(n.type))} />
               <div className="flex-1 min-w-0">
                 <div className="text-[13px] font-bold mb-0.5 max-[900px]:text-sm max-[900px]:leading-snug max-[900px]:mb-1">{n.title}</div>
-                <div className="text-xs text-ctrl-text2 leading-normal max-[900px]:text-[13px] max-[900px]:leading-relaxed">{n.body}</div>
+                <TextWithLinks text={n.body} className="text-xs text-ctrl-text2 leading-normal max-[900px]:text-[13px] max-[900px]:leading-relaxed" />
                 <div className="font-mono text-[9px] text-ctrl-text3 mt-1 tracking-wide max-[900px]:text-[10px] max-[900px]:mt-2">{formatDate(n.created_at)} · {n.tag}</div>
               </div>
               {admin && <div className="text-[11px] text-ctrl-text3 cursor-pointer ml-auto py-0.5 px-1.5 transition-colors duration-200 shrink-0 hover:text-ctrl-danger" onClick={() => deleteNews(n.id)}>✕</div>}
