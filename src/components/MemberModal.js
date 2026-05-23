@@ -85,7 +85,6 @@ export function MemberModal({ member, tasks, onClose }) {
         </div>
 
         <div className="px-6 pt-4 pb-4 border-b border-ctrl-border">
-          {/* Task stats */}
           <div className="grid grid-cols-2 gap-2.5">
             <div className="bg-ctrl-bg2 border border-ctrl-border rounded-md py-3.5 px-2 text-center">
               <div className="font-mono text-[28px] font-bold leading-none text-ctrl-accent mb-1.5">
@@ -136,34 +135,6 @@ export function MemberModal({ member, tasks, onClose }) {
               </div>
             </div>
           </div>
-        </div>
-
-        {/* Tasks */}
-        <div className="flex-1 overflow-y-auto min-h-0">
-          {openTasks.length > 0 ? (
-            <div className="px-6 py-4">
-              <div className="font-mono text-[9px] text-ctrl-text2 tracking-[2px] uppercase mb-3">
-                Otevřené úkoly ({openTasks.length})
-              </div>
-              <div className="flex flex-col gap-2">
-                {openTasks.slice(0, 5).map(t => (
-                  <div
-                    key={t.id}
-                    className="text-[13px] py-2.5 px-3.5 bg-ctrl-bg2 border-l-2 border-l-ctrl-accent rounded-r-md leading-snug"
-                  >
-                    {t.text}
-                    {t.due_date && (
-                      <span className="font-mono text-[10px] text-ctrl-text2 ml-2">{t.due_date}</span>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
-          ) : (
-            <div className="px-6 py-8 text-center">
-              <p className="text-[13px] text-ctrl-text2">Žádné otevřené úkoly</p>
-            </div>
-          )}
         </div>
 
         {/* Footer */}

@@ -4,6 +4,7 @@ import { supabase } from '../supabase'
 
 import { Sec } from './ui/Sec'
 import { ChatUserAvatar } from './ChatUserAvatar'
+import { MemberModal } from './MemberModal'
 
 import { cn, getInitials, isUserOnline } from '../lib/utils'
 import { useAppData } from '../context/AppDataContext'
@@ -15,7 +16,8 @@ import { isAdmin } from '../lib/permissions'
 
 
 export function Chat({ profile, activeBucket }) {
-  const { members, touchLastSeen } = useAppData()
+  const { members, touchLastSeen, tasks } = useAppData()
+  const [selectedMember, setSelectedMember] = useState(null)
 
   const [messages, setMessages] = useState([])
   const [presenceByUserId, setPresenceByUserId] = useState({})
@@ -131,6 +133,11 @@ export function Chat({ profile, activeBucket }) {
     const tick = setInterval(() => setPresenceTick(t => t + 1), 60000)
     return () => clearInterval(tick)
   }, [])
+
+  const openMemberProfile = (authorId) => {
+    const member = members.find(m => String(m.id) === String(authorId))
+    if (member) setSelectedMember(member)
+  }
 
   const getAuthorPresence = (authorId) => {
     const id = String(authorId)
@@ -268,6 +275,7 @@ export function Chat({ profile, activeBucket }) {
                   initials={m.author_initials}
                   status={status}
                   isOnline={isOnline}
+                  onClick={() => openMemberProfile(m.author_id)}
                 />
               )}
 
@@ -371,6 +379,7 @@ export function Chat({ profile, activeBucket }) {
                   isOwn
                   status={status}
                   isOnline={isOnline}
+                  onClick={() => openMemberProfile(m.author_id)}
                 />
               )}
 
@@ -404,6 +413,14 @@ export function Chat({ profile, activeBucket }) {
 
         </div>
 
+      )}
+
+      {selectedMember && (
+        <MemberModal
+          member={selectedMember}
+          tasks={tasks}
+          onClose={() => setSelectedMember(null)}
+        />
       )}
 
     </div>
