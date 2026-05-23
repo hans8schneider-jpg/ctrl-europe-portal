@@ -63,35 +63,39 @@ export function AdminPage() {
         )}
       </div>
 
-      <div className="flex gap-0 mb-5 border-b border-ctrl-border">
-        <div className={cn('py-2.5 px-5 font-mono text-[10px] tracking-[2px] uppercase cursor-pointer text-ctrl-text2 border-b-2 border-transparent -mb-px transition-all duration-200 hover:text-ctrl-text', activeTab === 'members' && 'text-ctrl-accent border-b-ctrl-accent')} onClick={() => setActiveTab('members')}>ČLENOVÉ ({members.length})</div>
+      <div className="flex gap-0 mb-5 border-b border-ctrl-border max-[900px]:overflow-x-auto max-[900px]:-mx-4 max-[900px]:px-4 max-[900px]:scrollbar-none">
+        <div className={cn('py-2.5 px-5 font-mono text-[10px] tracking-[2px] uppercase cursor-pointer text-ctrl-text2 border-b-2 border-transparent -mb-px transition-all duration-200 hover:text-ctrl-text shrink-0 max-[900px]:py-2 max-[900px]:px-3 max-[900px]:text-[9px] max-[900px]:tracking-[1px] whitespace-nowrap', activeTab === 'members' && 'text-ctrl-accent border-b-ctrl-accent')} onClick={() => setActiveTab('members')}>ČLENOVÉ ({members.length})</div>
         {fullAdmin && (
-          <div className={cn('py-2.5 px-5 font-mono text-[10px] tracking-[2px] uppercase cursor-pointer text-ctrl-text2 border-b-2 border-transparent -mb-px transition-all duration-200 hover:text-ctrl-text', activeTab === 'stats' && 'text-ctrl-accent border-b-ctrl-accent')} onClick={() => setActiveTab('stats')}>STATISTIKY</div>
+          <div className={cn('py-2.5 px-5 font-mono text-[10px] tracking-[2px] uppercase cursor-pointer text-ctrl-text2 border-b-2 border-transparent -mb-px transition-all duration-200 hover:text-ctrl-text shrink-0 max-[900px]:py-2 max-[900px]:px-3 max-[900px]:text-[9px] max-[900px]:tracking-[1px] whitespace-nowrap', activeTab === 'stats' && 'text-ctrl-accent border-b-ctrl-accent')} onClick={() => setActiveTab('stats')}>STATISTIKY</div>
         )}
-        <div className={cn('py-2.5 px-5 font-mono text-[10px] tracking-[2px] uppercase cursor-pointer text-ctrl-text2 border-b-2 border-transparent -mb-px transition-all duration-200 hover:text-ctrl-text', activeTab === 'reports' && 'text-ctrl-accent border-b-ctrl-accent')} onClick={() => setActiveTab('reports')}>REPORTY</div>
+        <div className={cn('py-2.5 px-5 font-mono text-[10px] tracking-[2px] uppercase cursor-pointer text-ctrl-text2 border-b-2 border-transparent -mb-px transition-all duration-200 hover:text-ctrl-text shrink-0 max-[900px]:py-2 max-[900px]:px-3 max-[900px]:text-[9px] max-[900px]:tracking-[1px] whitespace-nowrap', activeTab === 'reports' && 'text-ctrl-accent border-b-ctrl-accent')} onClick={() => setActiveTab('reports')}>REPORTY</div>
         {fullAdmin && (
-          <div className={cn('py-2.5 px-5 font-mono text-[10px] tracking-[2px] uppercase cursor-pointer text-ctrl-text2 border-b-2 border-transparent -mb-px transition-all duration-200 hover:text-ctrl-text', activeTab === 'add' && 'text-ctrl-accent border-b-ctrl-accent')} onClick={() => setActiveTab('add')}>PŘIDAT ČLENA</div>
+          <div className={cn('py-2.5 px-5 font-mono text-[10px] tracking-[2px] uppercase cursor-pointer text-ctrl-text2 border-b-2 border-transparent -mb-px transition-all duration-200 hover:text-ctrl-text shrink-0 max-[900px]:py-2 max-[900px]:px-3 max-[900px]:text-[9px] max-[900px]:tracking-[1px] whitespace-nowrap', activeTab === 'add' && 'text-ctrl-accent border-b-ctrl-accent')} onClick={() => setActiveTab('add')}>PŘIDAT ČLENA</div>
         )}
       </div>
 
       {activeTab === 'members' && (
         <div>
           {members.map(m => (
-            <div key={m.id} className="py-3 px-4 flex items-center gap-3 bg-ctrl-panel border border-ctrl-border mb-2 transition-all duration-200 hover:border-ctrl-border2">
-              <div className={cn('w-[34px] h-[34px] flex items-center justify-center text-xs font-bold font-mono shrink-0', bucketMemberAvCls(m.bucket))}>
-                {getInitials(m.name)}
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="text-[13px] font-bold">{m.name}</div>
-                <div className="font-mono text-[10px] text-ctrl-text2 mt-0.5">
-                  {m.role} · {m.bucket}{m.secondary_bucket && ` + ${m.secondary_bucket}`}
+            <div key={m.id} className="py-3 px-4 flex items-center gap-3 bg-ctrl-panel border border-ctrl-border mb-2 transition-all duration-200 hover:border-ctrl-border2 max-[900px]:flex-col max-[900px]:items-stretch max-[900px]:gap-2.5 max-[900px]:py-3.5 max-[900px]:px-3.5">
+              <div className="flex items-center gap-3 min-w-0 flex-1 max-[900px]:w-full">
+                <div className={cn('w-[34px] h-[34px] flex items-center justify-center text-xs font-bold font-mono shrink-0', bucketMemberAvCls(m.bucket))}>
+                  {getInitials(m.name)}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="text-[13px] font-bold leading-snug max-[900px]:text-sm">{m.name}</div>
+                  <div className="font-mono text-[10px] text-ctrl-text2 mt-0.5 leading-relaxed max-[900px]:text-[11px] max-[900px]:mt-1">
+                    {m.role} · {m.bucket}{m.secondary_bucket && ` + ${m.secondary_bucket}`}
+                  </div>
                 </div>
               </div>
-              <span className={cn('font-mono text-[9px] py-0.5 px-[7px] tracking-wide uppercase', roleBadgeCls(m.layer))}>
-                {ROLE_LABELS[m.layer] || m.layer}
-              </span>
-              <div className={cn('font-mono text-[10px] min-w-[120px] text-right', lastSeenCls(getLastSeenKind(m.last_seen)))}>
-                {formatTime(m.last_seen)}
+              <div className="flex items-center gap-2 shrink-0 max-[900px]:w-full max-[900px]:justify-between max-[900px]:pt-2.5 max-[900px]:border-t max-[900px]:border-ctrl-border">
+                <span className={cn('font-mono text-[9px] py-0.5 px-[7px] tracking-wide uppercase max-[900px]:text-[10px] max-[900px]:px-2', roleBadgeCls(m.layer))}>
+                  {ROLE_LABELS[m.layer] || m.layer}
+                </span>
+                <div className={cn('font-mono text-[10px] min-w-[120px] text-right max-[900px]:min-w-0 max-[900px]:text-[11px]', lastSeenCls(getLastSeenKind(m.last_seen)))}>
+                  {formatTime(m.last_seen)}
+                </div>
               </div>
             </div>
           ))}
