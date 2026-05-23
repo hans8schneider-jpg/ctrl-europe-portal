@@ -11,7 +11,7 @@ import { useAppData } from '../context/AppDataContext'
 const emptyTask = { name: '', description: '', assignee: '', due: '', tag: 'other' }
 
 export function Tasks({ profile, tasks, setTasks, activeBucket }) {
-  const { members } = useAppData()
+  const { members, profile: ctxProfile, loadNotifications } = useAppData()
   const [showAdd, setShowAdd] = useState(false)
   const [activeTab, setActiveTab] = useState('open')
   const [newTask, setNewTask] = useState(emptyTask)
@@ -51,7 +51,15 @@ export function Tasks({ profile, tasks, setTasks, activeBucket }) {
       bucket_target,
       created_by: profile.id
     }]).select()
-    if (data) { setTasks(prev => [...prev, data[0]]); setNewTask(emptyTask); setShowAdd(false) }
+    if (data) {
+      const task = data[0]
+      setTasks(prev => [...prev, task])
+      setNewTask(emptyTask)
+      setShowAdd(false)
+      if (ctxProfile) {
+        await loadNotifications(profile.id, ctxProfile)
+      }
+    }
   }
 
   const getCompletorName = (task) => {

@@ -1,6 +1,11 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
 import { supabase } from '../supabase'
 import { canAccessAdminPanel, isAdmin } from '../lib/permissions'
+import {
+  fetchNotificationsForUser,
+  markNotificationsRead,
+  notificationVisibleToProfile,
+} from '../lib/notifications'
 
 const AppDataContext = createContext(null)
 
@@ -10,6 +15,7 @@ export function AppDataProvider({ session, children }) {
   const [news, setNews] = useState([])
   const [events, setEvents] = useState([])
   const [members, setMembers] = useState([])
+  const [notifications, setNotifications] = useState([])
   const [loading, setLoading] = useState(true)
 
   const touchLastSeen = useCallback(async () => {
@@ -19,6 +25,22 @@ export function AppDataProvider({ session, children }) {
     const userId = session.user.id
     setProfile(prev => (prev && String(prev.id) === String(userId) ? { ...prev, last_seen: now } : prev))
     setMembers(prev => prev.map(m => (String(m.id) === String(userId) ? { ...m, last_seen: now } : m)))
+  }, [session])
+
+  const loadNotifications = useCallback(async (userId, currentProfile) => {
+    if (!userId || !currentProfile) return
+    const { data } = await fetchNotificationsForUser(userId)
+    setNotifications(data.filter(n => notificationVisibleToProfile(n, currentProfile)))
+  }, [])
+
+  const markNotificationsAsRead = useCallback(async (notificationIds) => {
+    if (!session?.user?.id || !notificationIds?.length) return
+    const ids = [...new Set(notificationIds.map(String))]
+    const { error } = await markNotificationsRead(ids, session.user.id)
+    if (error) return
+    setNotifications(prev =>
+      prev.map(n => (ids.includes(String(n.id)) ? { ...n, read: true } : n))
+    )
   }, [session])
 
   useEffect(() => {
@@ -38,10 +60,11 @@ export function AppDataProvider({ session, children }) {
       if (newsData) setNews(newsData)
       if (eventData) setEvents(eventData)
       if (memberData) setMembers(memberData)
+      if (prof) await loadNotifications(session.user.id, prof)
       setLoading(false)
     }
     load()
-  }, [session, touchLastSeen])
+  }, [session, touchLastSeen, loadNotifications])
 
   const myOpenCount = useMemo(() => {
     if (!profile) return 0
@@ -57,6 +80,11 @@ export function AppDataProvider({ session, children }) {
     return counts
   }, [tasks])
 
+  const unreadNotificationCount = useMemo(
+    () => notifications.filter(n => !n.read).length,
+    [notifications]
+  )
+
   const admin = profile ? isAdmin(profile.layer) : false
   const adminPanelAccess = profile ? canAccessAdminPanel(profile.layer) : false
 
@@ -68,7 +96,13 @@ export function AppDataProvider({ session, children }) {
     news,
     setNews,
     events,
+    setEvents,
     members,
+    notifications,
+    setNotifications,
+    loadNotifications,
+    markNotificationsAsRead,
+    unreadNotificationCount,
     touchLastSeen,
     loading,
     myOpenCount,

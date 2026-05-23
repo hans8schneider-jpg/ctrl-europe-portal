@@ -1,12 +1,40 @@
 import { useEffect, useRef, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { cn } from '../lib/utils'
+import { formatTime } from '../lib/format'
+import { bucketPath } from '../lib/bucketSlug'
 import { IconBell } from './icons/NavIcons'
 
-export function NotificationsDropdown({ notifications = [] }) {
+function notificationPath(notification) {
+  switch (notification.type) {
+    case 'task':
+      return notification.bucket_target ? bucketPath(notification.bucket_target) : '/'
+    case 'news':
+    case 'event':
+    default:
+      return '/'
+  }
+}
+
+export function NotificationsDropdown({ notifications = [], onMarkAllRead }) {
+  const navigate = useNavigate()
   const [open, setOpen] = useState(false)
   const containerRef = useRef(null)
+  const markedOnOpenRef = useRef(false)
 
   const unreadCount = notifications.filter(n => !n.read).length
+
+  useEffect(() => {
+    if (!open) {
+      markedOnOpenRef.current = false
+      return
+    }
+    if (markedOnOpenRef.current) return
+    const ids = notifications.filter(n => !n.read).map(n => n.id)
+    if (ids.length === 0) return
+    markedOnOpenRef.current = true
+    onMarkAllRead?.(ids)
+  }, [open, notifications, onMarkAllRead])
 
   useEffect(() => {
     if (!open) return
@@ -25,6 +53,11 @@ export function NotificationsDropdown({ notifications = [] }) {
       document.removeEventListener('keydown', handleEscape)
     }
   }, [open])
+
+  const handleNotificationClick = (notification) => {
+    setOpen(false)
+    navigate(notificationPath(notification))
+  }
 
   return (
     <div className="relative" ref={containerRef}>
@@ -78,13 +111,14 @@ export function NotificationsDropdown({ notifications = [] }) {
                         'w-full text-left py-3 px-4 border-0 bg-transparent cursor-pointer font-sans text-[13px] transition-colors duration-150 hover:bg-[rgba(42,107,255,0.05)]',
                         !n.read && 'bg-[rgba(42,107,255,0.06)]'
                       )}
-                      onClick={() => n.onClick?.()}
+                      onClick={() => handleNotificationClick(n)}
                     >
                       {n.title && <div className="font-semibold text-ctrl-text mb-0.5">{n.title}</div>}
-                      {n.body && <div className="text-ctrl-text2 text-xs leading-relaxed">{n.body}</div>}
-                      {n.time && (
-                        <div className="text-ctrl-text3 text-[10px] font-mono mt-1 tracking-wide">{n.time}</div>
-                      )}
+                      {n.body && <div className="text-ctrl-text2 text-xs leading-relaxed line-clamp-2">{n.body}</div>}
+                      <div className="text-ctrl-text3 text-[10px] font-mono mt-1 tracking-wide">
+                        {formatTime(n.created_at)}
+                        {n.bucket_target && ` · ${n.bucket_target}`}
+                      </div>
                     </button>
                   </li>
                 ))}

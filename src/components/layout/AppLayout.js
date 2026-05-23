@@ -31,7 +31,15 @@ const PAGE_TITLES = {
 export function AppLayout() {
   const navigate = useNavigate()
   const location = useLocation()
-  const { profile, openCountByBucket, admin, adminPanelAccess, touchLastSeen } = useAppData()
+  const {
+    profile,
+    openCountByBucket,
+    notifications,
+    markNotificationsAsRead,
+    admin,
+    adminPanelAccess,
+    touchLastSeen,
+  } = useAppData()
   const [profileMenuOpen, setProfileMenuOpen] = useState(false)
   const [reportModalOpen, setReportModalOpen] = useState(false)
   const profileMenuRef = useRef(null)
@@ -243,7 +251,10 @@ export function AppLayout() {
             {!admin && adminPanelAccess && (
               <span className="text-[9px] py-0.5 px-2 font-mono tracking-wide bg-ctrl-info text-white">DEV</span>
             )}
-            <NotificationsDropdown />
+            <NotificationsDropdown
+              notifications={notifications}
+              onMarkAllRead={markNotificationsAsRead}
+            />
           </div>
         </header>
 

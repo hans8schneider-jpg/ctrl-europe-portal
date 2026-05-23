@@ -8,7 +8,7 @@ import { newsDotCls, eventTypeCls } from '../constants/styles'
 import { useAppData } from '../context/AppDataContext'
 
 export function DashboardPage() {
-  const { profile, tasks, news, setNews, events, members } = useAppData()
+  const { profile, tasks, news, setNews, events, setEvents, members, loadNotifications } = useAppData()
   const [showAddNews, setShowAddNews] = useState(false)
   const [showAddEvent, setShowAddEvent] = useState(false)
   const [newNews, setNewNews] = useState({ title: '', body: '', tag: 'INFO', type: 'accent' })
@@ -34,14 +34,23 @@ export function DashboardPage() {
   const addNews = async () => {
     if (!newNews.title || !newNews.body) return
     const { data } = await supabase.from('news').insert([{ ...newNews, created_by: profile.id }]).select()
-    if (data) { setNews(prev => [data[0], ...prev]); setNewNews({ title: '', body: '', tag: 'INFO', type: 'accent' }); setShowAddNews(false) }
+    if (data) {
+      setNews(prev => [data[0], ...prev])
+      setNewNews({ title: '', body: '', tag: 'INFO', type: 'accent' })
+      setShowAddNews(false)
+      await loadNotifications(profile.id, profile)
+    }
   }
 
   const addEvent = async () => {
     if (!newEvent.title || !newEvent.date) return
-    await supabase.from('events').insert([{ ...newEvent, created_by: profile.id }])
-    setShowAddEvent(false)
-    window.location.reload()
+    const { data } = await supabase.from('events').insert([{ ...newEvent, created_by: profile.id }]).select()
+    if (data) {
+      setEvents(prev => [...prev, data[0]].sort((a, b) => String(a.date).localeCompare(String(b.date))))
+      setNewEvent({ title: '', description: '', date: '', time: '', type: 'event' })
+      setShowAddEvent(false)
+      await loadNotifications(profile.id, profile)
+    }
   }
 
   const totalDone = relevantTasks.filter(t => t.done).length
