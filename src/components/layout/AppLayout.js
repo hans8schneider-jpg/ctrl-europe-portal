@@ -10,7 +10,8 @@ import { ROLE_LABELS, roleBadgeCls } from '../../constants/roles'
 import { getStatusMeta } from '../../constants/status'
 import { useAppData } from '../../context/AppDataContext'
 import { MobileBottomNav } from '../MobileBottomNav'
-import { IconAdmin, IconCells, IconDashboard, IconProfile } from '../icons/NavIcons'
+import { ReportModal } from '../ReportModal'
+import { IconAdmin, IconCells, IconDashboard, IconProfile, IconReport } from '../icons/NavIcons'
 
 const NAV_MAIN = [
   { path: '/', label: 'Dashboard', Icon: IconDashboard, end: true },
@@ -29,8 +30,9 @@ const PAGE_TITLES = {
 export function AppLayout() {
   const navigate = useNavigate()
   const location = useLocation()
-  const { profile, tasks, myOpenCount, admin, touchLastSeen } = useAppData()
+  const { profile, tasks, myOpenCount, admin, adminPanelAccess, touchLastSeen } = useAppData()
   const [profileMenuOpen, setProfileMenuOpen] = useState(false)
+  const [reportModalOpen, setReportModalOpen] = useState(false)
   const profileMenuRef = useRef(null)
   const isFirstPath = useRef(true)
 
@@ -105,7 +107,7 @@ export function AppLayout() {
 
         <nav className="flex-1 py-2.5 overflow-y-auto">
           <div className="py-2.5 px-5 pb-1 font-mono text-[8px] tracking-[3px] text-ctrl-text3 uppercase">Navigace</div>
-          {NAV_MAIN.filter(n => !n.adminOnly || admin).map(n => (
+          {NAV_MAIN.filter(n => !n.adminOnly || adminPanelAccess).map(n => (
             <NavLink key={n.path} to={n.path} end={n.end} className={navLinkCls}>
               <n.Icon />
               <span>{n.label}</span>
@@ -153,6 +155,17 @@ export function AppLayout() {
               >
                 <IconProfile />
                 <span>Profil</span>
+              </button>
+              <button
+                type="button"
+                className="w-full flex items-center gap-2.5 py-2.5 px-5 bg-transparent border-0 border-b border-ctrl-border text-ctrl-text2 text-xs font-semibold tracking-wide uppercase cursor-pointer font-mono text-left transition-all duration-200 hover:text-ctrl-warning hover:bg-[rgba(255,184,0,0.05)]"
+                onClick={() => {
+                  setProfileMenuOpen(false)
+                  setReportModalOpen(true)
+                }}
+              >
+                <IconReport />
+                <span>Report</span>
               </button>
               <button
                 type="button"
@@ -217,6 +230,9 @@ export function AppLayout() {
           {admin && (
             <span className="text-[9px] py-0.5 px-2 font-mono tracking-wide bg-ctrl-danger text-white ml-auto">ADMIN</span>
           )}
+          {!admin && adminPanelAccess && (
+            <span className="text-[9px] py-0.5 px-2 font-mono tracking-wide bg-ctrl-info text-white ml-auto">DEV</span>
+          )}
         </header>
 
         <main className="p-7 animate-fade-in max-[900px]:p-4">
@@ -229,6 +245,10 @@ export function AppLayout() {
         activeBucketSlug={activeBucketSlug}
         tasks={tasks}
       />
+
+      {reportModalOpen && (
+        <ReportModal profile={profile} onClose={() => setReportModalOpen(false)} />
+      )}
     </div>
   )
 }

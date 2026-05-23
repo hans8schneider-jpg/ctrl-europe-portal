@@ -4,6 +4,8 @@ export const canAddTasks = (role) => ['admin', 'vedouci'].includes(role)
 export const canSeeAllBuckets = (role) => role === 'admin'
 export const canObserveAll = (role) => ['admin', 'pozorovatel'].includes(role)
 export const isAdmin = (role) => role === 'admin'
+export const isDeveloper = (role) => role === 'developer'
+export const canAccessAdminPanel = (role) => ['admin', 'developer'].includes(role)
 
 export const getAccessibleBuckets = (profile) => {
   if (!profile) return []

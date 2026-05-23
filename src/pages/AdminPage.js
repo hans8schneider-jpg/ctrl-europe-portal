@@ -1,15 +1,39 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { supabase } from '../supabase'
 import { cn, getInitials } from '../lib/utils'
-import { formatTime } from '../lib/format'
+import { formatDate, formatTime } from '../lib/format'
 import { ALL_BUCKETS, bucketBarCls, bucketMemberAvCls } from '../constants/buckets'
 import { ROLE_LABELS, roleBadgeCls } from '../constants/roles'
 import { lastSeenCls } from '../constants/styles'
 import { Sec } from '../components/ui/Sec'
+import { isAdmin } from '../lib/permissions'
 import { useAppData } from '../context/AppDataContext'
 
+const REPORT_TYPE_LABELS = { bug: 'Chyba', idea: 'Nápad' }
+const REPORT_TYPE_CLS = {
+  bug: 'bg-ctrl-danger/20 text-ctrl-danger border-ctrl-danger/40',
+  idea: 'bg-ctrl-warning/15 text-ctrl-warning border-ctrl-warning/40',
+}
+
 export function AdminPage() {
-  const { members } = useAppData()
+  const { members, profile } = useAppData()
+  const fullAdmin = isAdmin(profile.layer)
   const [activeTab, setActiveTab] = useState('members')
+  const [reports, setReports] = useState([])
+  const [reportsLoading, setReportsLoading] = useState(false)
+
+  useEffect(() => {
+    if (activeTab !== 'reports') return
+    setReportsLoading(true)
+    supabase
+      .from('member_reports')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .then(({ data }) => {
+        setReports(data || [])
+        setReportsLoading(false)
+      })
+  }, [activeTab])
 
   const getLastSeenKind = (lastSeen) => {
     if (!lastSeen) return 'never'
@@ -32,13 +56,22 @@ export function AdminPage() {
     <div className="animate-fade-in">
       <div className="flex items-center gap-3 mb-5">
         <Sec className="!mb-0">ADMIN PANEL</Sec>
-        <span className="bg-ctrl-danger text-white font-mono text-[9px] py-0.5 px-2 tracking-wide">POUZE ADMIN</span>
+        {fullAdmin ? (
+          <span className="bg-ctrl-danger text-white font-mono text-[9px] py-0.5 px-2 tracking-wide">POUZE ADMIN</span>
+        ) : (
+          <span className="bg-ctrl-info text-white font-mono text-[9px] py-0.5 px-2 tracking-wide">DEVELOPER</span>
+        )}
       </div>
 
       <div className="flex gap-0 mb-5 border-b border-ctrl-border">
         <div className={cn('py-2.5 px-5 font-mono text-[10px] tracking-[2px] uppercase cursor-pointer text-ctrl-text2 border-b-2 border-transparent -mb-px transition-all duration-200 hover:text-ctrl-text', activeTab === 'members' && 'text-ctrl-accent border-b-ctrl-accent')} onClick={() => setActiveTab('members')}>ČLENOVÉ ({members.length})</div>
-        <div className={cn('py-2.5 px-5 font-mono text-[10px] tracking-[2px] uppercase cursor-pointer text-ctrl-text2 border-b-2 border-transparent -mb-px transition-all duration-200 hover:text-ctrl-text', activeTab === 'stats' && 'text-ctrl-accent border-b-ctrl-accent')} onClick={() => setActiveTab('stats')}>STATISTIKY</div>
-        <div className={cn('py-2.5 px-5 font-mono text-[10px] tracking-[2px] uppercase cursor-pointer text-ctrl-text2 border-b-2 border-transparent -mb-px transition-all duration-200 hover:text-ctrl-text', activeTab === 'add' && 'text-ctrl-accent border-b-ctrl-accent')} onClick={() => setActiveTab('add')}>PŘIDAT ČLENA</div>
+        {fullAdmin && (
+          <div className={cn('py-2.5 px-5 font-mono text-[10px] tracking-[2px] uppercase cursor-pointer text-ctrl-text2 border-b-2 border-transparent -mb-px transition-all duration-200 hover:text-ctrl-text', activeTab === 'stats' && 'text-ctrl-accent border-b-ctrl-accent')} onClick={() => setActiveTab('stats')}>STATISTIKY</div>
+        )}
+        <div className={cn('py-2.5 px-5 font-mono text-[10px] tracking-[2px] uppercase cursor-pointer text-ctrl-text2 border-b-2 border-transparent -mb-px transition-all duration-200 hover:text-ctrl-text', activeTab === 'reports' && 'text-ctrl-accent border-b-ctrl-accent')} onClick={() => setActiveTab('reports')}>REPORTY</div>
+        {fullAdmin && (
+          <div className={cn('py-2.5 px-5 font-mono text-[10px] tracking-[2px] uppercase cursor-pointer text-ctrl-text2 border-b-2 border-transparent -mb-px transition-all duration-200 hover:text-ctrl-text', activeTab === 'add' && 'text-ctrl-accent border-b-ctrl-accent')} onClick={() => setActiveTab('add')}>PŘIDAT ČLENA</div>
+        )}
       </div>
 
       {activeTab === 'members' && (
@@ -65,7 +98,7 @@ export function AdminPage() {
         </div>
       )}
 
-      {activeTab === 'stats' && (
+      {fullAdmin && activeTab === 'stats' && (
         <div>
           <div className="bg-ctrl-panel border border-ctrl-border p-5 mb-3">
             <Sec>AKTIVITA BUNĚK — POSLEDNÍCH 7 DNÍ</Sec>
@@ -86,7 +119,50 @@ export function AdminPage() {
         </div>
       )}
 
-      {activeTab === 'add' && (
+      {activeTab === 'reports' && (
+        <div>
+          {reportsLoading && (
+            <p className="font-mono text-[11px] text-ctrl-text2 tracking-wide">Načítám reporty...</p>
+          )}
+          {!reportsLoading && reports.length === 0 && (
+            <p className="text-[13px] text-ctrl-text2">Zatím žádné reporty od členů.</p>
+          )}
+          {!reportsLoading &&
+            reports.map(r => {
+              const author = members.find(m => m.id === r.author_id)
+              return (
+                <div
+                  key={r.id}
+                  className="py-4 px-4 bg-ctrl-panel border border-ctrl-border mb-2 transition-all duration-200 hover:border-ctrl-border2"
+                >
+                  <div className="flex items-start gap-3 flex-wrap mb-2">
+                    <span
+                      className={cn(
+                        'font-mono text-[9px] py-0.5 px-2 tracking-wide uppercase border',
+                        REPORT_TYPE_CLS[r.type] || 'border-ctrl-border text-ctrl-text2'
+                      )}
+                    >
+                      {REPORT_TYPE_LABELS[r.type] || r.type}
+                    </span>
+                    {r.title && <span className="text-[13px] font-bold flex-1 min-w-0">{r.title}</span>}
+                    <span className="font-mono text-[10px] text-ctrl-text2 ml-auto shrink-0">
+                      {formatDate(r.created_at)}
+                    </span>
+                  </div>
+                  <p className="text-[13px] text-ctrl-text2 leading-relaxed whitespace-pre-wrap mb-2">
+                    {r.message}
+                  </p>
+                  <div className="font-mono text-[10px] text-ctrl-text3 tracking-wide">
+                    {author ? author.name : 'Neznámý člen'}
+                    {author?.bucket && ` · ${author.bucket}`}
+                  </div>
+                </div>
+              )
+            })}
+        </div>
+      )}
+
+      {fullAdmin && activeTab === 'add' && (
         <div className="bg-ctrl-panel border border-ctrl-warning p-4 mb-3.5 animate-fade-in">
           <Sec>JAK PŘIDAT ČLENA</Sec>
           <div className="text-xs text-ctrl-text2 leading-[1.8] font-mono">
@@ -106,7 +182,7 @@ export function AdminPage() {
               );
             </div>
             <div className="text-ctrl-text2 mt-3 text-[11px]">
-              Dostupné vrstvy: admin · predsednictvo · zastupce_predsednictva · vedouci · clen · pozorovatel
+              Dostupné vrstvy: admin · developer · predsednictvo · zastupce_predsednictva · vedouci · clen · pozorovatel
             </div>
           </div>
         </div>

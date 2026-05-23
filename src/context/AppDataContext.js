@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
 import { supabase } from '../supabase'
-import { isAdmin } from '../lib/permissions'
+import { canAccessAdminPanel, isAdmin } from '../lib/permissions'
 
 const AppDataContext = createContext(null)
 
@@ -49,6 +49,7 @@ export function AppDataProvider({ session, children }) {
   }, [tasks, profile])
 
   const admin = profile ? isAdmin(profile.layer) : false
+  const adminPanelAccess = profile ? canAccessAdminPanel(profile.layer) : false
 
   const value = {
     profile,
@@ -63,6 +64,7 @@ export function AppDataProvider({ session, children }) {
     loading,
     myOpenCount,
     admin,
+    adminPanelAccess,
   }
 
   return <AppDataContext.Provider value={value}>{children}</AppDataContext.Provider>

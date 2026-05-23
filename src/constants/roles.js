@@ -1,5 +1,6 @@
 export const ROLE_HIERARCHY = {
   admin: 6,
+  developer: 5,
   predsednictvo: 5,
   zastupce_predsednictva: 4,
   vedouci: 3,
@@ -9,6 +10,7 @@ export const ROLE_HIERARCHY = {
 
 export const ROLE_LABELS = {
   admin: 'Admin',
+  developer: 'Developer',
   predsednictvo: 'Předsednictvo',
   zastupce_predsednictva: 'Zástupce předsednictva',
   vedouci: 'Vedoucí buňky',
@@ -18,6 +20,7 @@ export const ROLE_LABELS = {
 
 export const ROLE_BADGE_CLS = {
   admin: 'bg-[rgba(255,51,102,0.12)] text-ctrl-danger',
+  developer: 'bg-[rgba(0,212,255,0.12)] text-ctrl-info',
   predsednictvo: 'bg-[rgba(180,79,255,0.12)] text-[#b44fff]',
   zastupce_predsednictva: 'bg-[rgba(119,68,255,0.12)] text-[#7744ff]',
   vedouci: 'bg-[rgba(42,107,255,0.12)] text-ctrl-accent',

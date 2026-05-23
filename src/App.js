@@ -9,7 +9,7 @@ import { BucketsPage } from './pages/BucketsPage'
 import { BucketPage } from './pages/BucketPage'
 import { ProfilePage } from './pages/ProfilePage'
 import { AdminPage } from './pages/AdminPage'
-import { isAdmin } from './lib/permissions'
+import { canAccessAdminPanel } from './lib/permissions'
 import { useAppData } from './context/AppDataContext'
 
 function LoadingScreen() {
@@ -24,7 +24,7 @@ function LoadingScreen() {
 function AdminRoute() {
   const { profile, loading } = useAppData()
   if (loading) return <LoadingScreen />
-  if (!isAdmin(profile.layer)) return <Navigate to="/" replace />
+  if (!canAccessAdminPanel(profile.layer)) return <Navigate to="/" replace />
   return <AdminPage />
 }
 

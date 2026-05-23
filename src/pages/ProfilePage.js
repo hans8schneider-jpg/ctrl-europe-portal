@@ -5,7 +5,7 @@ import { bucketAvCls } from '../constants/buckets'
 import { ROLE_LABELS, roleBadgeCls } from '../constants/roles'
 import { STATUS_OPT_CLS } from '../constants/styles'
 import { STATUS_CONFIG } from '../constants/status'
-import { canAddTasks, isAdmin } from '../lib/permissions'
+import { canAccessAdminPanel, canAddTasks, isAdmin } from '../lib/permissions'
 import { Sec } from '../components/ui/Sec'
 import { PasswordChange } from '../components/PasswordChange'
 import { useAppData } from '../context/AppDataContext'
@@ -68,6 +68,7 @@ export function ProfilePage() {
               profile.layer !== 'pozorovatel' && 'Označování úkolů',
               canAddTasks(profile.layer) && 'Přidávání úkolů',
               isAdmin(profile.layer) && 'Admin panel',
+              canAccessAdminPanel(profile.layer) && !isAdmin(profile.layer) && 'Admin panel — reporty a členové',
               isAdmin(profile.layer) && 'Správa všech buněk',
               profile.layer === 'pozorovatel' && 'Čtení všech buněk',
             ].filter(Boolean).map(p => (

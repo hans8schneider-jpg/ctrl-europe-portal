@@ -5,13 +5,15 @@ import { TEAM_BUCKETS, SPECIAL_BUCKETS } from '../constants/buckets'
 import { bucketDotCls } from '../constants/buckets'
 import { bucketPath } from '../lib/bucketSlug'
 import { useAppData } from '../context/AppDataContext'
-import { IconAdmin, IconCells, IconDashboard, IconMenu, IconProfile } from './icons/NavIcons'
+import { ReportModal } from './ReportModal'
+import { IconAdmin, IconCells, IconDashboard, IconMenu, IconProfile, IconReport } from './icons/NavIcons'
 
 export function MobileBottomNav({ accessibleBuckets, activeBucketSlug, tasks }) {
   const navigate = useNavigate()
   const location = useLocation()
-  const { myOpenCount, admin } = useAppData()
+  const { profile, myOpenCount, adminPanelAccess } = useAppData()
   const [drawerOpen, setDrawerOpen] = useState(false)
+  const [reportModalOpen, setReportModalOpen] = useState(false)
 
   const path = location.pathname
   const isBucketRoute = Boolean(activeBucketSlug)
@@ -20,7 +22,7 @@ export function MobileBottomNav({ accessibleBuckets, activeBucketSlug, tasks }) 
     { path: '/', label: 'Hlavní', Icon: IconDashboard, end: true },
     { path: '/bunky', label: 'Buňky', Icon: IconCells },
     { path: '/profil', label: 'Profil', Icon: IconProfile },
-    ...(admin ? [{ path: '/admin', label: 'Admin', Icon: IconAdmin }] : []),
+    ...(adminPanelAccess ? [{ path: '/admin', label: 'Admin', Icon: IconAdmin }] : []),
   ]
 
   const isNavActive = (itemPath, end) => {
@@ -88,6 +90,20 @@ export function MobileBottomNav({ accessibleBuckets, activeBucketSlug, tasks }) 
               ))}
             </>
           )}
+          <div className="font-mono text-[9px] tracking-[3px] text-ctrl-text3 uppercase py-3 px-3 pb-1 mt-1 border-t border-ctrl-border">Portál</div>
+          <div
+            className="flex items-center gap-3 py-3.5 px-3 cursor-pointer rounded-lg transition-colors duration-150 mb-0.5 active:bg-[rgba(255,184,0,0.08)]"
+            onClick={() => {
+              setDrawerOpen(false)
+              setReportModalOpen(true)
+            }}
+          >
+            <IconReport className="w-5 h-5 shrink-0 text-ctrl-warning" />
+            <div className="flex-1 min-w-0">
+              <span className="text-[15px] font-semibold">Report</span>
+              <div className="font-mono text-[10px] text-ctrl-text2 mt-0.5">Chyba nebo nápad na portál</div>
+            </div>
+          </div>
           <div className="pt-3">
             <div className="flex items-center gap-3 py-3.5 px-3 cursor-pointer rounded-lg transition-colors duration-150 mb-0.5 active:bg-[rgba(42,107,255,0.1)] text-ctrl-text2" onClick={() => setDrawerOpen(false)}>
               <span className="text-[13px] text-ctrl-text2">Zavřít</span>
@@ -95,6 +111,10 @@ export function MobileBottomNav({ accessibleBuckets, activeBucketSlug, tasks }) 
           </div>
         </div>
       </div>
+
+      {reportModalOpen && profile && (
+        <ReportModal profile={profile} onClose={() => setReportModalOpen(false)} />
+      )}
     </>
   )
 }
