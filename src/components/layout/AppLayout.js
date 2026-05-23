@@ -10,6 +10,7 @@ import { ROLE_LABELS, roleBadgeCls } from '../../constants/roles'
 import { getStatusMeta } from '../../constants/status'
 import { useAppData } from '../../context/AppDataContext'
 import { MobileBottomNav } from '../MobileBottomNav'
+import { NotificationsDropdown } from '../NotificationsDropdown'
 import { ReportModal } from '../ReportModal'
 import { IconAdmin, IconCells, IconDashboard, IconProfile, IconReport } from '../icons/NavIcons'
 
@@ -30,7 +31,7 @@ const PAGE_TITLES = {
 export function AppLayout() {
   const navigate = useNavigate()
   const location = useLocation()
-  const { profile, tasks, myOpenCount, admin, adminPanelAccess, touchLastSeen } = useAppData()
+  const { profile, openCountByBucket, admin, adminPanelAccess, touchLastSeen } = useAppData()
   const [profileMenuOpen, setProfileMenuOpen] = useState(false)
   const [reportModalOpen, setReportModalOpen] = useState(false)
   const profileMenuRef = useRef(null)
@@ -111,33 +112,46 @@ export function AppLayout() {
             <NavLink key={n.path} to={n.path} end={n.end} className={navLinkCls}>
               <n.Icon />
               <span>{n.label}</span>
-              {n.path === '/' && myOpenCount > 0 && (
-                <span className="absolute right-3.5 top-1/2 -translate-y-1/2 bg-ctrl-danger text-white text-[9px] min-w-4 h-4 flex items-center justify-center rounded-lg font-mono animate-badge-pop">{myOpenCount}</span>
-              )}
             </NavLink>
           ))}
 
           {teamBuckets.length > 0 && (
             <>
               <div className="py-2.5 px-5 pb-1 font-mono text-[8px] tracking-[3px] text-ctrl-text3 uppercase">Týmové buňky</div>
-              {teamBuckets.map(b => (
-                <div key={b} className={bucketLinkCls(bucketToSlug(b))} onClick={() => navigate(bucketPath(b))} role="link" tabIndex={0} onKeyDown={e => e.key === 'Enter' && navigate(bucketPath(b))}>
-                  <div className={cn('w-1.5 h-1.5 shrink-0', bucketDotCls(b))} />
-                  <span className="text-[11px]">{b}</span>
-                </div>
-              ))}
+              {teamBuckets.map(b => {
+                const bucketOpenCount = openCountByBucket[b] || 0
+                return (
+                  <div key={b} className={bucketLinkCls(bucketToSlug(b))} onClick={() => navigate(bucketPath(b))} role="link" tabIndex={0} onKeyDown={e => e.key === 'Enter' && navigate(bucketPath(b))}>
+                    <div className={cn('w-1.5 h-1.5 shrink-0', bucketDotCls(b))} />
+                    <span className="text-[11px]">{b}</span>
+                    {bucketOpenCount > 0 && (
+                      <span className="absolute right-3.5 top-1/2 -translate-y-1/2 bg-ctrl-danger text-white text-[9px] min-w-4 h-4 flex items-center justify-center rounded-lg font-mono animate-badge-pop">
+                        {bucketOpenCount > 9 ? '9+' : bucketOpenCount}
+                      </span>
+                    )}
+                  </div>
+                )
+              })}
             </>
           )}
 
           {specialBuckets.length > 0 && (
             <>
               <div className="py-2.5 px-5 pb-1 font-mono text-[8px] tracking-[3px] text-ctrl-text3 uppercase">Orgány</div>
-              {specialBuckets.map(b => (
-                <div key={b} className={bucketLinkCls(bucketToSlug(b))} onClick={() => navigate(bucketPath(b))} role="link" tabIndex={0} onKeyDown={e => e.key === 'Enter' && navigate(bucketPath(b))}>
-                  <div className={cn('w-1.5 h-1.5 shrink-0', bucketDotCls(b))} />
-                  <span className="text-[11px]">{b}</span>
-                </div>
-              ))}
+              {specialBuckets.map(b => {
+                const bucketOpenCount = openCountByBucket[b] || 0
+                return (
+                  <div key={b} className={bucketLinkCls(bucketToSlug(b))} onClick={() => navigate(bucketPath(b))} role="link" tabIndex={0} onKeyDown={e => e.key === 'Enter' && navigate(bucketPath(b))}>
+                    <div className={cn('w-1.5 h-1.5 shrink-0', bucketDotCls(b))} />
+                    <span className="text-[11px]">{b}</span>
+                    {bucketOpenCount > 0 && (
+                      <span className="absolute right-3.5 top-1/2 -translate-y-1/2 bg-ctrl-danger text-white text-[9px] min-w-4 h-4 flex items-center justify-center rounded-lg font-mono animate-badge-pop">
+                        {bucketOpenCount > 9 ? '9+' : bucketOpenCount}
+                      </span>
+                    )}
+                  </div>
+                )
+              })}
             </>
           )}
         </nav>
@@ -222,17 +236,15 @@ export function AppLayout() {
               ← Zpět
             </button>
           )}
-          {myOpenCount > 0 && !activeBucket && (
-            <span className="text-[9px] py-0.5 px-2 font-mono tracking-wide bg-ctrl-accent text-white">
-              {myOpenCount} ÚKOLŮ
-            </span>
-          )}
-          {admin && (
-            <span className="text-[9px] py-0.5 px-2 font-mono tracking-wide bg-ctrl-danger text-white ml-auto">ADMIN</span>
-          )}
-          {!admin && adminPanelAccess && (
-            <span className="text-[9px] py-0.5 px-2 font-mono tracking-wide bg-ctrl-info text-white ml-auto">DEV</span>
-          )}
+          <div className="ml-auto flex items-center gap-2 shrink-0">
+            {admin && (
+              <span className="text-[9px] py-0.5 px-2 font-mono tracking-wide bg-ctrl-danger text-white">ADMIN</span>
+            )}
+            {!admin && adminPanelAccess && (
+              <span className="text-[9px] py-0.5 px-2 font-mono tracking-wide bg-ctrl-info text-white">DEV</span>
+            )}
+            <NotificationsDropdown />
+          </div>
         </header>
 
         <main className="p-7 animate-fade-in max-[900px]:p-4">
@@ -243,7 +255,6 @@ export function AppLayout() {
       <MobileBottomNav
         accessibleBuckets={accessibleBuckets}
         activeBucketSlug={activeBucketSlug}
-        tasks={tasks}
       />
 
       {reportModalOpen && (

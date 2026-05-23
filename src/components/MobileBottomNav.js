@@ -8,10 +8,10 @@ import { useAppData } from '../context/AppDataContext'
 import { ReportModal } from './ReportModal'
 import { IconAdmin, IconCells, IconDashboard, IconMenu, IconProfile, IconReport } from './icons/NavIcons'
 
-export function MobileBottomNav({ accessibleBuckets, activeBucketSlug, tasks }) {
+export function MobileBottomNav({ accessibleBuckets, activeBucketSlug }) {
   const navigate = useNavigate()
   const location = useLocation()
-  const { profile, myOpenCount, adminPanelAccess } = useAppData()
+  const { profile, openCountByBucket, adminPanelAccess } = useAppData()
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [reportModalOpen, setReportModalOpen] = useState(false)
 
@@ -46,9 +46,6 @@ export function MobileBottomNav({ accessibleBuckets, activeBucketSlug, tasks }) 
             )}
             onClick={() => { navigate(n.path); setDrawerOpen(false) }}
           >
-            {n.path === '/' && myOpenCount > 0 && (
-              <span className="absolute top-[5px] right-2 bg-ctrl-danger text-white text-[8px] min-w-[14px] h-3.5 flex items-center justify-center rounded-[7px]">{myOpenCount}</span>
-            )}
             <n.Icon className="w-5 h-5" />
             <span className="font-mono text-[8px] tracking-wide uppercase">{n.label}</span>
           </div>
@@ -70,24 +67,36 @@ export function MobileBottomNav({ accessibleBuckets, activeBucketSlug, tasks }) 
           <div className="w-9 h-1 bg-ctrl-border2 rounded-sm mx-auto mb-4" />
           <div className="font-mono text-[9px] tracking-[3px] text-ctrl-text3 uppercase py-3 px-3 pb-1">Týmové buňky</div>
           {teamBuckets.map(b => {
-            const bucketTasks = tasks.filter(t => (t.bucket_target === b) && !t.done)
+            const bucketOpenCount = openCountByBucket[b] || 0
             return (
-              <div key={b} className="flex items-center gap-3 py-3.5 px-3 cursor-pointer rounded-lg transition-colors duration-150 mb-0.5 active:bg-[rgba(42,107,255,0.1)]" onClick={() => { navigate(bucketPath(b)); setDrawerOpen(false) }}>
+              <div key={b} className="relative flex items-center gap-3 py-3.5 px-3 cursor-pointer rounded-lg transition-colors duration-150 mb-0.5 active:bg-[rgba(42,107,255,0.1)]" onClick={() => { navigate(bucketPath(b)); setDrawerOpen(false) }}>
                 <div className={cn('w-2.5 h-2.5 rounded-sm shrink-0', bucketDotCls(b))} />
                 <span className="text-[15px] font-semibold">{b}</span>
-                {bucketTasks.length > 0 && <span className="font-mono text-[10px] text-ctrl-text2 ml-auto">{bucketTasks.length} úkolů</span>}
+                {bucketOpenCount > 0 && (
+                  <span className="ml-auto bg-ctrl-danger text-white text-[9px] min-w-4 h-4 flex items-center justify-center rounded-lg font-mono animate-badge-pop">
+                    {bucketOpenCount > 9 ? '9+' : bucketOpenCount}
+                  </span>
+                )}
               </div>
             )
           })}
           {specialBuckets.length > 0 && (
             <>
               <div className="font-mono text-[9px] tracking-[3px] text-ctrl-text3 uppercase py-3 px-3 pb-1">Orgány</div>
-              {specialBuckets.map(b => (
-                <div key={b} className="flex items-center gap-3 py-3.5 px-3 cursor-pointer rounded-lg transition-colors duration-150 mb-0.5 active:bg-[rgba(42,107,255,0.1)]" onClick={() => { navigate(bucketPath(b)); setDrawerOpen(false) }}>
-                  <div className={cn('w-2.5 h-2.5 rounded-sm shrink-0', bucketDotCls(b))} />
-                  <span className="text-[15px] font-semibold">{b}</span>
-                </div>
-              ))}
+              {specialBuckets.map(b => {
+                const bucketOpenCount = openCountByBucket[b] || 0
+                return (
+                  <div key={b} className="relative flex items-center gap-3 py-3.5 px-3 cursor-pointer rounded-lg transition-colors duration-150 mb-0.5 active:bg-[rgba(42,107,255,0.1)]" onClick={() => { navigate(bucketPath(b)); setDrawerOpen(false) }}>
+                    <div className={cn('w-2.5 h-2.5 rounded-sm shrink-0', bucketDotCls(b))} />
+                    <span className="text-[15px] font-semibold">{b}</span>
+                    {bucketOpenCount > 0 && (
+                      <span className="ml-auto bg-ctrl-danger text-white text-[9px] min-w-4 h-4 flex items-center justify-center rounded-lg font-mono animate-badge-pop">
+                        {bucketOpenCount > 9 ? '9+' : bucketOpenCount}
+                      </span>
+                    )}
+                  </div>
+                )
+              })}
             </>
           )}
           <div className="font-mono text-[9px] tracking-[3px] text-ctrl-text3 uppercase py-3 px-3 pb-1 mt-1 border-t border-ctrl-border">Portál</div>

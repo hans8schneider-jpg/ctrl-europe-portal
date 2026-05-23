@@ -48,6 +48,15 @@ export function AppDataProvider({ session, children }) {
     return tasks.filter(t => !t.done && (t.bucket_target === profile.bucket || t.bucket_target === 'all')).length
   }, [tasks, profile])
 
+  const openCountByBucket = useMemo(() => {
+    const counts = {}
+    for (const t of tasks) {
+      if (t.done || !t.bucket_target) continue
+      counts[t.bucket_target] = (counts[t.bucket_target] || 0) + 1
+    }
+    return counts
+  }, [tasks])
+
   const admin = profile ? isAdmin(profile.layer) : false
   const adminPanelAccess = profile ? canAccessAdminPanel(profile.layer) : false
 
@@ -63,6 +72,7 @@ export function AppDataProvider({ session, children }) {
     touchLastSeen,
     loading,
     myOpenCount,
+    openCountByBucket,
     admin,
     adminPanelAccess,
   }
