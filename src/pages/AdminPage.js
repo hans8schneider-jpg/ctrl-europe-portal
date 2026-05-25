@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '../supabase'
-import { cn, getInitials } from '../lib/utils'
+import { cn, getInitials, getLastSeenKind } from '../lib/utils'
 import { formatDate, formatTime } from '../lib/format'
 import { ALL_BUCKETS, bucketBarCls, bucketMemberAvCls } from '../constants/buckets'
 import { ROLE_LABELS, roleBadgeCls } from '../constants/roles'
@@ -54,16 +54,23 @@ export function AdminPage() {
         setReports(data || [])
         setReportsLoading(false)
       })
-  }, [activeTab])
 
-  const getLastSeenKind = (lastSeen) => {
-    if (!lastSeen) return 'never'
-    const diff = new Date() - new Date(lastSeen)
-    if (diff < 86400000) return 'good'
-    if (diff < 86400000 * 3) return 'ok'
-    if (diff < 86400000 * 7) return 'bad'
-    return 'never'
-  }
+    const channel = supabase
+      .channel('admin-reports-live')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'member_reports' }, payload => {
+        const row = payload.new
+        if (!row?.id) return
+        setReports(prev => {
+          if (prev.some(r => String(r.id) === String(row.id))) return prev
+          return [row, ...prev]
+        })
+      })
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [activeTab])
 
   const bucketStats = ALL_BUCKETS.map(bucket => {
     const bucketMembers = members.filter(m => m.bucket === bucket)

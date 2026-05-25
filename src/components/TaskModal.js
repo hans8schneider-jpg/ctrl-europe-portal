@@ -86,6 +86,34 @@ export function TaskModal({
     loadComments()
   }, [task, loadComments])
 
+  useEffect(() => {
+    if (!task?.id) return
+    const taskId = task.id
+    const channel = supabase
+      .channel(`task-comments-${taskId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'task_comments',
+          filter: `task_id=eq.${taskId}`,
+        },
+        payload => {
+          const row = payload.new
+          if (!row?.id) return
+          setComments(prev => {
+            if (prev.some(c => String(c.id) === String(row.id))) return prev
+            return [...prev, row]
+          })
+        }
+      )
+      .subscribe()
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [task?.id])
+
   if (!task) return null
 
   const creator = members?.find(m => m.id === task.created_by)

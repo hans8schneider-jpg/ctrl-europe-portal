@@ -11,11 +11,13 @@ import { PasswordChange } from '../components/PasswordChange'
 import { useAppData } from '../context/AppDataContext'
 
 export function ProfilePage() {
-  const { profile } = useAppData()
+  const { profile, setProfile, patchMember } = useAppData()
   const [status, setStatus] = useState(profile.status || 'active')
 
   const updateStatus = async (newStatus) => {
     setStatus(newStatus)
+    setProfile(prev => (prev ? { ...prev, status: newStatus } : prev))
+    patchMember(profile.id, { status: newStatus })
     await supabase.from('profiles').update({ status: newStatus }).eq('id', profile.id)
   }
 

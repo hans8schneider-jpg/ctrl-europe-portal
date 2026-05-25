@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { supabase } from '../supabase'
+import { formatTime } from '../lib/format'
 import { cn, getInitials, isUserOnline } from '../lib/utils'
 import { StatusBadge } from './StatusBadge'
 import { bucketAvCls, bucketOrganBadgeCls } from '../constants/buckets'
@@ -26,6 +27,7 @@ export function MemberModal({ member, tasks, onClose }) {
   const [roleDraft, setRoleDraft] = useState('')
   const [roleSaving, setRoleSaving] = useState(false)
   const [roleError, setRoleError] = useState(null)
+  const [, setPresenceTick] = useState(0)
 
   useEffect(() => {
     if (!liveMember) return
@@ -33,6 +35,11 @@ export function MemberModal({ member, tasks, onClose }) {
     setRoleDraft(liveMember.role || '')
     setRoleError(null)
   }, [liveMember?.id, liveMember?.role])
+
+  useEffect(() => {
+    const tick = setInterval(() => setPresenceTick(t => t + 1), 60000)
+    return () => clearInterval(tick)
+  }, [])
 
   if (!member || !liveMember) return null
 
@@ -65,19 +72,17 @@ export function MemberModal({ member, tasks, onClose }) {
   const openTasks = memberTasks.filter(t => !t.done)
   const doneTasks = memberTasks.filter(t => t.done)
 
-  const lastSeen = liveMember.last_seen
-    ? (() => {
-        const d = new Date(liveMember.last_seen)
-        const diff = Math.floor((Date.now() - d) / 60000)
-        if (diff < 2) return 'právě online'
-        if (diff < 60) return `před ${diff} min`
-        if (diff < 1440) return `před ${Math.floor(diff / 60)} hod`
-        return `před ${Math.floor(diff / 1440)} dny`
-      })()
-    : 'neznámo'
+  const isOnline = isUserOnline(liveMember.last_seen)
+  const activityLabel = (() => {
+    if (isOnline) return 'Aktivní'
+    const t = formatTime(liveMember.last_seen)
+    if (t === 'Nikdy') return 'Neaktivní'
+    const suffix =
+      t === 'Právě teď' ? 'právě teď' : t.charAt(0).toLowerCase() + t.slice(1)
+    return `Aktivní ${suffix}`
+  })()
 
   const roleLabel = ROLE_LABELS[liveMember.layer] || liveMember.layer
-  const isOnline = isUserOnline(liveMember.last_seen)
   const memberStatus = liveMember.status || 'active'
   const statusMeta = getStatusMeta(memberStatus)
   const { teamBuckets, organBuckets, avatarBucket } =
@@ -267,32 +272,33 @@ export function MemberModal({ member, tasks, onClose }) {
 
           {/* Status & activity */}
           <div className="mt-3 py-3 px-4 bg-ctrl-bg2/60 border border-ctrl-border rounded-md flex flex-col gap-3">
-            <div className="flex items-center gap-3">
-              <StatusBadge status={memberStatus} isOnline={isOnline} size="sm" />
-              <div className="flex-1 min-w-0">
-                <div className="font-mono text-[9px] text-ctrl-text2 tracking-[2px] uppercase">
-                  Stav
+            {isOnline && (
+              <>
+                <div className="flex items-center gap-3">
+                  <StatusBadge status={memberStatus} isOnline size="sm" />
+                  <div className="flex-1 min-w-0">
+                    <div className="font-mono text-[9px] text-ctrl-text2 tracking-[2px] uppercase">
+                      Stav
+                    </div>
+                    <div className={cn('text-[13px] font-medium mt-0.5', statusMeta.textCls)}>
+                      {statusMeta.label}
+                    </div>
+                  </div>
                 </div>
-                <div
-                  className={cn(
-                    'text-[13px] font-medium mt-0.5',
-                    isOnline ? statusMeta.textCls : 'text-ctrl-text3'
-                  )}
-                >
-                  {statusMeta.label}
-                  {!isOnline && (
-                    <span className="text-ctrl-text3 font-normal"> · offline</span>
-                  )}
-                </div>
-              </div>
-            </div>
-            <div className="h-px bg-ctrl-border" />
+                <div className="h-px bg-ctrl-border" />
+              </>
+            )}
             <div>
               <div className="font-mono text-[9px] text-ctrl-text2 tracking-[2px] uppercase">
-                Naposledy aktivní
+                Aktivita
               </div>
-              <div className="text-[13px] font-medium mt-0.5 text-ctrl-text">
-                {lastSeen}
+              <div
+                className={cn(
+                  'text-[13px] font-medium mt-0.5',
+                  isOnline ? 'text-ctrl-success' : 'text-ctrl-text3'
+                )}
+              >
+                {activityLabel}
               </div>
             </div>
           </div>

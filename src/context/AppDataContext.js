@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import { supabase } from '../supabase'
 import { canAccessAdminPanel, isAdmin } from '../lib/permissions'
 import { canViewerSeeTask } from '../lib/tasks'
@@ -66,6 +66,136 @@ export function AppDataProvider({ session, children }) {
     }
     load()
   }, [session, touchLastSeen, loadNotifications])
+
+  const profileRef = useRef(profile)
+  const sessionUserIdRef = useRef(session?.user?.id)
+  useEffect(() => {
+    profileRef.current = profile
+  }, [profile])
+  useEffect(() => {
+    sessionUserIdRef.current = session?.user?.id
+  }, [session?.user?.id])
+
+  useEffect(() => {
+    if (!session) return
+
+    const mergeMemberRow = row => {
+      if (!row?.id) return
+      const id = String(row.id)
+      setMembers(prev => {
+        const idx = prev.findIndex(m => String(m.id) === id)
+        if (idx === -1) {
+          return [...prev, row].sort((a, b) => (a.name || '').localeCompare(b.name || '', 'cs'))
+        }
+        const next = [...prev]
+        next[idx] = { ...next[idx], ...row }
+        return next
+      })
+      setProfile(prev => (prev && String(prev.id) === id ? { ...prev, ...row } : prev))
+    }
+
+    const channel = supabase
+      .channel('app-data-live')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'profiles' }, payload => {
+        mergeMemberRow(payload.new)
+      })
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'profiles' }, payload => {
+        mergeMemberRow(payload.new)
+      })
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'tasks' }, payload => {
+        const row = payload.new
+        if (!row?.id) return
+        setTasks(prev => {
+          const id = String(row.id)
+          if (prev.some(t => String(t.id) === id)) {
+            return prev.map(t => (String(t.id) === id ? { ...t, ...row } : t))
+          }
+          return [row, ...prev]
+        })
+      })
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'tasks' }, payload => {
+        const row = payload.new
+        if (!row?.id) return
+        const id = String(row.id)
+        setTasks(prev => prev.map(t => (String(t.id) === id ? { ...t, ...row } : t)))
+      })
+      .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'tasks' }, payload => {
+        const id = payload.old?.id
+        if (id == null) return
+        setTasks(prev => prev.filter(t => String(t.id) !== String(id)))
+      })
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'news' }, payload => {
+        const row = payload.new
+        if (!row?.id) return
+        setNews(prev => {
+          const id = String(row.id)
+          if (prev.some(n => String(n.id) === id)) return prev
+          return [row, ...prev].slice(0, 20)
+        })
+      })
+      .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'news' }, payload => {
+        const id = payload.old?.id
+        if (id == null) return
+        setNews(prev => prev.filter(n => String(n.id) !== String(id)))
+      })
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'events' }, payload => {
+        const row = payload.new
+        if (!row?.id) return
+        setEvents(prev => {
+          const id = String(row.id)
+          if (prev.some(e => String(e.id) === id)) return prev
+          return [...prev, row].sort((a, b) => String(b.date).localeCompare(String(a.date)))
+        })
+      })
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'events' }, payload => {
+        const row = payload.new
+        if (!row?.id) return
+        const id = String(row.id)
+        setEvents(prev =>
+          prev
+            .map(e => (String(e.id) === id ? { ...e, ...row } : e))
+            .sort((a, b) => String(b.date).localeCompare(String(a.date)))
+        )
+      })
+      .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'events' }, payload => {
+        const id = payload.old?.id
+        if (id == null) return
+        setEvents(prev => prev.filter(e => String(e.id) !== String(id)))
+      })
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'notifications' }, payload => {
+        const row = payload.new
+        const prof = profileRef.current
+        if (!row?.id || !prof || !notificationVisibleToProfile(row, prof)) return
+        setNotifications(prev => {
+          const id = String(row.id)
+          if (prev.some(n => String(n.id) === id)) return prev
+          return [{ ...row, read: false }, ...prev].slice(0, 50)
+        })
+      })
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'notification_reads' }, payload => {
+        const row = payload.new
+        const userId = sessionUserIdRef.current
+        if (!row?.notification_id || !userId || String(row.user_id) !== String(userId)) return
+        const nid = String(row.notification_id)
+        setNotifications(prev =>
+          prev.map(n => (String(n.id) === nid ? { ...n, read: true } : n))
+        )
+      })
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'notification_reads' }, payload => {
+        const row = payload.new
+        const userId = sessionUserIdRef.current
+        if (!row?.notification_id || !userId || String(row.user_id) !== String(userId)) return
+        const nid = String(row.notification_id)
+        setNotifications(prev =>
+          prev.map(n => (String(n.id) === nid ? { ...n, read: true } : n))
+        )
+      })
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [session])
 
   const myOpenCount = useMemo(() => {
     if (!profile) return 0

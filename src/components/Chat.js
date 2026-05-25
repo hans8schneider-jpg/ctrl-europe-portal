@@ -121,11 +121,7 @@ export function Chat({ profile, activeBucket }) {
 
       .subscribe()
 
-    // Fallback polling every 5s in case realtime fails
-
-    const poll = setInterval(loadMessages, 5000)
-
-    return () => { supabase.removeChannel(channel); clearInterval(poll) }
+    return () => { supabase.removeChannel(channel) }
 
   }, [loadMessages, bucket])
 
@@ -136,28 +132,6 @@ export function Chat({ profile, activeBucket }) {
     })
     setPresenceByUserId(map)
   }, [members])
-
-  useEffect(() => {
-    const channel = supabase
-      .channel('chat-profile-status')
-      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'profiles' }, payload => {
-        const row = payload.new
-        if (!row?.id) return
-        setPresenceByUserId(prev => {
-          const id = String(row.id)
-          const cur = prev[id] || {}
-          return {
-            ...prev,
-            [id]: {
-              status: row.status ?? cur.status ?? 'active',
-              last_seen: row.last_seen !== undefined ? row.last_seen : cur.last_seen,
-            },
-          }
-        })
-      })
-      .subscribe()
-    return () => { supabase.removeChannel(channel) }
-  }, [])
 
   useEffect(() => {
     const tick = setInterval(() => setPresenceTick(t => t + 1), 60000)
