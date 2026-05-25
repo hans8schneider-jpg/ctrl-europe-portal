@@ -5,7 +5,7 @@ import { bucketAvCls } from '../constants/buckets'
 import { ROLE_LABELS, roleBadgeCls } from '../constants/roles'
 import { STATUS_OPT_CLS } from '../constants/styles'
 import { STATUS_CONFIG } from '../constants/status'
-import { canAccessAdminPanel, canAddTasks, isAdmin } from '../lib/permissions'
+import { canAccessAdminPanel, canAddTasks, canManageNews, isAdmin } from '../lib/permissions'
 import { Sec } from '../components/ui/Sec'
 import { PasswordChange } from '../components/PasswordChange'
 import { useAppData } from '../context/AppDataContext'
@@ -63,7 +63,8 @@ export function ProfilePage() {
           <div className="bg-ctrl-panel border border-ctrl-border p-5">
             <Sec>PŘÍSTUPOVÁ PRÁVA</Sec>
             {[
-              'Dashboard a oznámení',
+              'Dashboard',
+              canManageNews(profile.layer) && 'Správa oznámení',
               profile.layer !== 'pozorovatel' && 'Chat v buňce',
               profile.layer !== 'pozorovatel' && 'Označování úkolů',
               canAddTasks(profile.layer) && 'Přidávání úkolů',

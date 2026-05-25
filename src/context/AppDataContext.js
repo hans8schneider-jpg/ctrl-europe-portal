@@ -52,7 +52,7 @@ export function AppDataProvider({ session, children }) {
         supabase.from('profiles').select('*').eq('id', session.user.id).single(),
         supabase.from('tasks').select('*').order('created_at', { ascending: false }),
         supabase.from('news').select('*').order('created_at', { ascending: false }).limit(20),
-        supabase.from('events').select('*').order('date', { ascending: true }),
+        supabase.from('events').select('*').order('date', { ascending: false }),
         supabase.from('profiles').select('*').order('name'),
       ])
       if (prof) setProfile(prof)

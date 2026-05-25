@@ -22,6 +22,8 @@ export const canObserveAll = (role) => ['admin', 'pozorovatel'].includes(role)
 export const isAdmin = (role) => role === 'admin'
 export const isDeveloper = (role) => role === 'developer'
 export const canAccessAdminPanel = (role) => ['admin', 'developer'].includes(role)
+/** Oznámení na dashboardu (kalendář akcí jen admin) */
+export const canManageNews = (role) => ['admin', 'developer'].includes(role)
 
 /** Předsednictvo / zástupci / admin vidí organizační buňky na profilech ostatních */
 export const canSeeMemberOrganBuckets = (layer) =>

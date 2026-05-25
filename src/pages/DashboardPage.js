@@ -1,10 +1,11 @@
 import { useState } from 'react'
 import { supabase } from '../supabase'
 import { Sec } from '../components/ui/Sec'
+import { EventModal } from '../components/EventModal'
 import { TextWithLinks } from '../components/TextWithLinks'
 import { cn } from '../lib/utils'
 import { formatDate } from '../lib/format'
-import { isAdmin } from '../lib/permissions'
+import { canManageNews, isAdmin } from '../lib/permissions'
 import { newsDotCls, eventTypeCls } from '../constants/styles'
 import { useAppData } from '../context/AppDataContext'
 
@@ -14,6 +15,8 @@ export function DashboardPage() {
   const [showAddEvent, setShowAddEvent] = useState(false)
   const [newNews, setNewNews] = useState({ title: '', body: '', tag: 'INFO', type: 'accent' })
   const [newEvent, setNewEvent] = useState({ title: '', description: '', date: '', time: '', type: 'event' })
+  const [selectedEvent, setSelectedEvent] = useState(null)
+  const canEditNews = canManageNews(profile.layer)
   const admin = isAdmin(profile.layer)
 
   const isCellScoped = ['vedouci', 'clen'].includes(profile.layer)
@@ -47,7 +50,7 @@ export function DashboardPage() {
     if (!newEvent.title || !newEvent.date) return
     const { data } = await supabase.from('events').insert([{ ...newEvent, created_by: profile.id }]).select()
     if (data) {
-      setEvents(prev => [...prev, data[0]].sort((a, b) => String(a.date).localeCompare(String(b.date))))
+      setEvents(prev => [...prev, data[0]].sort((a, b) => String(b.date).localeCompare(String(a.date))))
       setNewEvent({ title: '', description: '', date: '', time: '', type: 'event' })
       setShowAddEvent(false)
       await loadNotifications(profile.id, profile)
@@ -93,7 +96,7 @@ export function DashboardPage() {
         <section className="min-w-0">
           <div className="flex justify-between items-center gap-3 mb-3.5 max-[900px]:mb-4">
             <Sec className="!mb-0">OZNÁMENÍ</Sec>
-            {admin && (
+            {canEditNews && (
               <button className="border-0 py-[9px] px-[18px] text-[11px] font-bold tracking-[2px] uppercase cursor-pointer font-sans transition-all duration-200 bg-ctrl-accent text-white hover:bg-ctrl-accent2 hover:-translate-y-px text-[10px] py-1.5 px-3 shrink-0" onClick={() => setShowAddNews(v => !v)}>+ PŘIDAT</button>
             )}
           </div>
@@ -127,7 +130,7 @@ export function DashboardPage() {
                 <TextWithLinks text={n.body} className="text-xs text-ctrl-text2 leading-normal max-[900px]:text-[13px] max-[900px]:leading-relaxed" />
                 <div className="font-mono text-[9px] text-ctrl-text3 mt-1 tracking-wide max-[900px]:text-[10px] max-[900px]:mt-2">{formatDate(n.created_at)} · {n.tag}</div>
               </div>
-              {admin && <div className="text-[11px] text-ctrl-text3 cursor-pointer ml-auto py-0.5 px-1.5 transition-colors duration-200 shrink-0 hover:text-ctrl-danger" onClick={() => deleteNews(n.id)}>✕</div>}
+              {canEditNews && <div className="text-[11px] text-ctrl-text3 cursor-pointer ml-auto py-0.5 px-1.5 transition-colors duration-200 shrink-0 hover:text-ctrl-danger" onClick={() => deleteNews(n.id)}>✕</div>}
             </div>
           ))}
           {news.length === 0 && <div className="text-ctrl-text2 text-xs py-2">Žádná oznámení.</div>}
@@ -164,7 +167,19 @@ export function DashboardPage() {
           )}
 
           {events.slice(0, 6).map(e => (
-            <div key={e.id} className="py-4 px-5 bg-ctrl-panel border border-ctrl-border mb-2.5 transition-all duration-200 hover:border-ctrl-border2 max-[900px]:py-4 max-[900px]:px-4 max-[900px]:mb-3">
+            <div
+              key={e.id}
+              role="button"
+              tabIndex={0}
+              className="py-4 px-5 bg-ctrl-panel border border-ctrl-border mb-2.5 transition-all duration-200 hover:border-ctrl-border2 cursor-pointer max-[900px]:py-4 max-[900px]:px-4 max-[900px]:mb-3"
+              onClick={() => setSelectedEvent(e)}
+              onKeyDown={ev => {
+                if (ev.key === 'Enter' || ev.key === ' ') {
+                  ev.preventDefault()
+                  setSelectedEvent(e)
+                }
+              }}
+            >
               <div className="flex items-center justify-between gap-2 mb-2">
                 <div className="font-mono text-[11px] text-ctrl-accent tracking-wide max-[900px]:text-xs">{e.date}{e.time && ` · ${e.time}`}</div>
                 <span className={eventTypeCls[e.type] || eventTypeCls.event}>{e.type === 'event' ? 'AKCE' : e.type === 'deadline' ? 'DEADLINE' : 'SCHŮZKA'}</span>
@@ -178,6 +193,10 @@ export function DashboardPage() {
           {events.length === 0 && <div className="text-ctrl-text2 text-xs py-2">Žádné nadcházející akce.</div>}
         </section>
       </div>
+
+      {selectedEvent && (
+        <EventModal event={selectedEvent} onClose={() => setSelectedEvent(null)} />
+      )}
     </div>
   )
 }
