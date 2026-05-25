@@ -1,4 +1,20 @@
-import { ALL_BUCKETS, SPECIAL_BUCKETS, TEAM_BUCKETS } from '../constants/buckets'
+import { ALL_BUCKETS, SPECIAL_BUCKETS, TEAM_BUCKETS, bucketOrganBadgeCls } from '../constants/buckets'
+import { roleBadgeCls } from '../constants/roles'
+
+/** Předsednictvo apod. v týmové buňce → štítek „Člen · {buňka}“ */
+const LAYERS_WITH_CLEN_TEAM_MEMBERSHIP = [
+  'admin',
+  'developer',
+  'predsednictvo',
+  'zastupce_predsednictva',
+]
+
+export const getTeamBucketBadgeDisplay = (memberLayer, bucket) => {
+  if (LAYERS_WITH_CLEN_TEAM_MEMBERSHIP.includes(memberLayer)) {
+    return { label: `Člen · ${bucket}`, className: roleBadgeCls('clen') }
+  }
+  return { label: bucket, className: bucketOrganBadgeCls(bucket) }
+}
 
 export const canAddTasks = (role) => ['admin', 'vedouci'].includes(role)
 export const canSeeAllBuckets = (role) => role === 'admin'

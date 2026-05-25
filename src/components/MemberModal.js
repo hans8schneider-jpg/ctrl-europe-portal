@@ -10,6 +10,7 @@ import {
   canEditMemberBucketRole,
   canSeeMemberBucketRole,
   getMemberBucketsForDisplay,
+  getTeamBucketBadgeDisplay,
 } from '../lib/permissions'
 import { useAppData } from '../context/AppDataContext'
 
@@ -86,6 +87,15 @@ export function MemberModal({ member, tasks, onClose }) {
   const extraTeamBuckets = teamBuckets.slice(1)
   const mergeRoleWithTeam =
     primaryTeam && ['vedouci', 'clen'].includes(liveMember.layer)
+  const primaryOrgan = organBuckets[0]
+  const extraOrganBuckets = organBuckets.slice(1)
+  const mergeOrganWithRole = Boolean(primaryOrgan && !mergeRoleWithTeam)
+
+  const topBadgeLabel = mergeRoleWithTeam
+    ? `${roleLabel} · ${primaryTeam}`
+    : mergeOrganWithRole
+      ? `${roleLabel} · ${primaryOrgan}`
+      : roleLabel
 
   const badgeCls =
     'inline-block font-mono text-[9px] py-1 px-2.5 tracking-[1.5px] uppercase'
@@ -133,21 +143,27 @@ export function MemberModal({ member, tasks, onClose }) {
               </h2>
               <div className="flex flex-col gap-1 items-start">
                 <span className={cn(badgeCls, roleBadgeCls(liveMember.layer))}>
-                  {mergeRoleWithTeam ? `${roleLabel} · ${primaryTeam}` : roleLabel}
+                  {topBadgeLabel}
                 </span>
                 {!mergeRoleWithTeam &&
-                  teamBuckets.map(b => (
-                    <span key={b} className={cn(badgeCls, bucketOrganBadgeCls(b))}>
-                      {b}
-                    </span>
-                  ))}
+                  teamBuckets.map(b => {
+                    const teamBadge = getTeamBucketBadgeDisplay(liveMember.layer, b)
+                    return (
+                      <span key={b} className={cn(badgeCls, teamBadge.className)}>
+                        {teamBadge.label}
+                      </span>
+                    )
+                  })}
                 {mergeRoleWithTeam &&
-                  extraTeamBuckets.map(b => (
-                    <span key={b} className={cn(badgeCls, bucketOrganBadgeCls(b))}>
-                      {b}
-                    </span>
-                  ))}
-                {organBuckets.map(b => (
+                  extraTeamBuckets.map(b => {
+                    const teamBadge = getTeamBucketBadgeDisplay(liveMember.layer, b)
+                    return (
+                      <span key={b} className={cn(badgeCls, teamBadge.className)}>
+                        {teamBadge.label}
+                      </span>
+                    )
+                  })}
+                {extraOrganBuckets.map(b => (
                   <span
                     key={b}
                     className={cn(
