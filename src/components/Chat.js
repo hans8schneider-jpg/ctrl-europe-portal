@@ -4,6 +4,7 @@ import { supabase } from '../supabase'
 
 import { Sec } from './ui/Sec'
 import { ChatUserAvatar } from './ChatUserAvatar'
+import { ChatMessageAttachments } from './ChatMessageAttachments'
 import { MemberModal } from './MemberModal'
 
 import { cn, getInitials, isUserOnline } from '../lib/utils'
@@ -12,6 +13,12 @@ import { useAppData } from '../context/AppDataContext'
 import { formatDate } from '../lib/format'
 
 import { isAdmin } from '../lib/permissions'
+import {
+  MAX_ATTACHMENTS_PER_MESSAGE,
+  removeChatAttachments,
+  uploadChatAttachments,
+  validateChatAttachment,
+} from '../lib/chatAttachments'
 
 
 
@@ -24,6 +31,9 @@ export function Chat({ profile, activeBucket }) {
   const [, setPresenceTick] = useState(0)
 
   const [input, setInput] = useState('')
+  const [pendingFiles, setPendingFiles] = useState([])
+  const [uploading, setUploading] = useState(false)
+  const [uploadError, setUploadError] = useState(null)
 
   const [loading, setLoading] = useState(true)
 
@@ -32,6 +42,7 @@ export function Chat({ profile, activeBucket }) {
   const [openMenuId, setOpenMenuId] = useState(null)
 
   const bottomRef = useRef(null)
+  const fileInputRef = useRef(null)
 
   const bucket = activeBucket || profile.bucket
 
@@ -174,23 +185,56 @@ export function Chat({ profile, activeBucket }) {
 
 
 
+  const addPendingFiles = (fileList) => {
+    if (!fileList?.length) return
+    setUploadError(null)
+    const next = [...pendingFiles]
+    for (const file of fileList) {
+      if (next.length >= MAX_ATTACHMENTS_PER_MESSAGE) {
+        setUploadError(`Max ${MAX_ATTACHMENTS_PER_MESSAGE} souborů na zprávu.`)
+        break
+      }
+      const err = validateChatAttachment(file)
+      if (err) {
+        setUploadError(err)
+        continue
+      }
+      next.push(file)
+    }
+    setPendingFiles(next)
+  }
+
   const sendMessage = async () => {
+    if (!canWrite || uploading) return
+    const text = input.trim()
+    if (!text && !pendingFiles.length) return
 
-    if (!input.trim() || !canWrite) return
-
-    const { error } = await supabase.from('messages').insert([{
-
-      text: input, author_id: profile.id,
-
-      author_name: profile.name, author_initials: getInitials(profile.name), bucket, pinned: false
-
-    }])
-
-    if (!error) {
+    setUploading(true)
+    setUploadError(null)
+    let attachments = []
+    try {
+      if (pendingFiles.length) {
+        attachments = await uploadChatAttachments(supabase, bucket, profile.id, pendingFiles)
+      }
+      const { error } = await supabase.from('messages').insert([{
+        text: text || null,
+        attachments,
+        author_id: profile.id,
+        author_name: profile.name,
+        author_initials: getInitials(profile.name),
+        bucket,
+        pinned: false,
+      }])
+      if (error) throw error
       touchLastSeen()
       setInput('')
+      setPendingFiles([])
+    } catch (e) {
+      if (attachments.length) await removeChatAttachments(supabase, attachments)
+      setUploadError(e?.message || 'Nahrání se nezdařilo.')
+    } finally {
+      setUploading(false)
     }
-
   }
 
 
@@ -210,17 +254,12 @@ export function Chat({ profile, activeBucket }) {
 
 
   const deleteMessage = async (msg) => {
-
+    await removeChatAttachments(supabase, msg.attachments)
     const { error } = await supabase.from('messages').delete().eq('id', msg.id).eq('author_id', profile.id)
-
     if (!error) {
-
       setMessages(prev => prev.filter(m => m.id !== msg.id))
-
       setOpenMenuId(null)
-
     }
-
   }
 
 
@@ -241,7 +280,10 @@ export function Chat({ profile, activeBucket }) {
 
           <div className="text-ctrl-accent text-xs shrink-0 mt-px">📌</div>
 
-          <div className="text-xs text-ctrl-text2 flex-1"><strong>{pinnedMsg.author_name}:</strong> {pinnedMsg.text}</div>
+          <div className="text-xs text-ctrl-text2 flex-1">
+            <strong>{pinnedMsg.author_name}:</strong> {pinnedMsg.text}
+            <ChatMessageAttachments attachments={pinnedMsg.attachments} />
+          </div>
 
         </div>
 
@@ -367,7 +409,10 @@ export function Chat({ profile, activeBucket }) {
 
                 )}
 
-                <div className={cn('text-[13px] leading-normal', isOwn ? 'text-ctrl-text pr-5' : 'text-ctrl-text2')}>{m.text}</div>
+                {m.text ? (
+                  <div className={cn('text-[13px] leading-normal', isOwn ? 'text-ctrl-text pr-5' : 'text-ctrl-text2')}>{m.text}</div>
+                ) : null}
+                <ChatMessageAttachments attachments={m.attachments} isOwn={isOwn} />
 
                 <div className={cn('font-mono text-[9px] text-ctrl-text2 mt-1', isOwn && 'text-right')}>{formatDate(m.created_at)}</div>
 
@@ -394,17 +439,69 @@ export function Chat({ profile, activeBucket }) {
       </div>
 
       {canWrite ? (
-
-        <div className="flex gap-2 pt-3 border-t border-ctrl-border mt-1">
-
-          <input className="flex-1 bg-ctrl-panel border border-ctrl-border text-ctrl-text py-3 px-4 text-[13px] font-sans outline-none transition-all duration-200 focus:border-ctrl-accent" placeholder="Napiš zprávu..." value={input}
-
-            onChange={e => setInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && sendMessage()} />
-
-          <button className="border-0 py-3 px-5 text-[11px] font-bold tracking-[2px] uppercase cursor-pointer font-mono transition-all duration-200 bg-ctrl-accent text-white hover:bg-ctrl-accent2 hover:-translate-y-px" onClick={sendMessage}>→</button>
-
+        <div className="pt-3 border-t border-ctrl-border mt-1">
+          {pendingFiles.length > 0 && (
+            <div className="flex flex-wrap gap-2 mb-2">
+              {pendingFiles.map((f, i) => (
+                <span
+                  key={`${f.name}-${i}`}
+                  className="inline-flex items-center gap-1.5 text-[10px] font-mono py-1 px-2 bg-ctrl-panel border border-ctrl-border text-ctrl-text2"
+                >
+                  📎 {f.name}
+                  <button
+                    type="button"
+                    className="text-ctrl-text3 hover:text-ctrl-danger"
+                    aria-label="Odebrat soubor"
+                    onClick={() => setPendingFiles(prev => prev.filter((_, j) => j !== i))}
+                  >
+                    ×
+                  </button>
+                </span>
+              ))}
+            </div>
+          )}
+          {uploadError && (
+            <div className="text-ctrl-danger text-[11px] font-mono mb-2">{uploadError}</div>
+          )}
+          <div className="flex gap-2">
+            <input
+              ref={fileInputRef}
+              type="file"
+              multiple
+              className="hidden"
+              accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt"
+              onChange={e => {
+                addPendingFiles(Array.from(e.target.files || []))
+                e.target.value = ''
+              }}
+            />
+            <button
+              type="button"
+              className="shrink-0 border border-ctrl-border bg-ctrl-panel text-ctrl-text2 py-3 px-3.5 text-[13px] hover:border-ctrl-accent hover:text-ctrl-accent transition-all duration-200 disabled:opacity-50"
+              title="Přiložit soubor"
+              disabled={uploading || pendingFiles.length >= MAX_ATTACHMENTS_PER_MESSAGE}
+              onClick={() => fileInputRef.current?.click()}
+            >
+              📎
+            </button>
+            <input
+              className="flex-1 bg-ctrl-panel border border-ctrl-border text-ctrl-text py-3 px-4 text-[13px] font-sans outline-none transition-all duration-200 focus:border-ctrl-accent"
+              placeholder="Napiš zprávu..."
+              value={input}
+              disabled={uploading}
+              onChange={e => setInput(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && !e.shiftKey && sendMessage()}
+            />
+            <button
+              type="button"
+              className="border-0 py-3 px-5 text-[11px] font-bold tracking-[2px] uppercase cursor-pointer font-mono transition-all duration-200 bg-ctrl-accent text-white hover:bg-ctrl-accent2 hover:-translate-y-px disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={uploading || (!input.trim() && !pendingFiles.length)}
+              onClick={sendMessage}
+            >
+              {uploading ? '…' : '→'}
+            </button>
+          </div>
         </div>
-
       ) : (
 
         <div className="py-3 text-ctrl-text2 text-xs font-mono border-t border-ctrl-border">
