@@ -12,7 +12,7 @@ import { useAppData } from '../../context/AppDataContext'
 import { MobileBottomNav } from '../MobileBottomNav'
 import { NotificationsDropdown } from '../NotificationsDropdown'
 import { ReportModal } from '../ReportModal'
-import { IconAdmin, IconCells, IconDashboard, IconProfile, IconReport } from '../icons/NavIcons'
+import { IconAdmin, IconArrowLeft, IconCells, IconDashboard, IconProfile, IconReport } from '../icons/NavIcons'
 
 const NAV_MAIN = [
   { path: '/', label: 'Dashboard', Icon: IconDashboard, end: true },
@@ -232,19 +232,25 @@ export function AppLayout() {
       </aside>
 
       <div className="ml-[230px] flex-1 min-h-screen animate-fade-in max-[900px]:ml-0 max-[900px]:pb-[70px]">
-        <header className="h-[54px] bg-ctrl-panel border-b border-ctrl-border flex items-center px-7 gap-3 sticky top-0 z-[100] backdrop-blur-md max-[900px]:px-4 max-[900px]:h-[50px]">
-          <span className="font-mono text-[10px] tracking-[3px] uppercase text-ctrl-text2">
+        <header className="h-[54px] bg-ctrl-panel border-b border-ctrl-border flex items-center px-7 gap-0 sticky top-0 z-[100] backdrop-blur-md max-[900px]:px-4 max-[900px]:h-[50px]">
+          {activeBucket && (
+            <>
+              <button
+                type="button"
+                className="flex items-center gap-1.5 shrink-0 py-1.5 pl-2 pr-2.5 mr-3 rounded-md border border-ctrl-border bg-[rgba(42,107,255,0.06)] text-ctrl-text2 cursor-pointer transition-all duration-200 hover:text-ctrl-accent hover:border-[rgba(42,107,255,0.35)] hover:bg-[rgba(42,107,255,0.12)] max-[480px]:px-2 max-[480px]:mr-2"
+                onClick={() => navigate('/bunky')}
+                aria-label="Zpět na Buňky"
+              >
+                <IconArrowLeft />
+                <span className="font-mono text-[10px] tracking-[2px] uppercase max-[480px]:sr-only">Buňky</span>
+              </button>
+              <div className="w-px h-5 bg-ctrl-border shrink-0 mr-3 max-[480px]:mr-2" aria-hidden />
+            </>
+          )}
+          <span className="font-mono text-[10px] tracking-[3px] uppercase text-ctrl-text2 truncate min-w-0">
             [CTRL] · {headerTitle}
           </span>
-          {activeBucket && (
-            <button
-              className="border-0 py-1 px-2.5 text-[10px] font-bold tracking-[2px] uppercase cursor-pointer font-sans transition-all duration-200 bg-transparent border border-ctrl-border text-ctrl-text2 hover:border-ctrl-text2 hover:text-ctrl-text"
-              onClick={() => navigate('/bunky')}
-            >
-              ← Zpět
-            </button>
-          )}
-          <div className="ml-auto flex items-center gap-2 shrink-0">
+          <div className="ml-auto flex items-center gap-2 shrink-0 pl-3">
             {admin && (
               <span className="text-[9px] py-0.5 px-2 font-mono tracking-wide bg-ctrl-danger text-white">ADMIN</span>
             )}

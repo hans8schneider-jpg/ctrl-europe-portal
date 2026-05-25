@@ -65,6 +65,14 @@ export function IconReport({ className }) {
   )
 }
 
+export function IconArrowLeft({ className = 'w-4 h-4' }) {
+  return (
+    <Icon className={className}>
+      <path d="M19 12H5M12 19l-7-7 7-7" />
+    </Icon>
+  )
+}
+
 export function IconMenu({ className = 'w-5 h-5' }) {
   return (
     <Icon className={className}>
