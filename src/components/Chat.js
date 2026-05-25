@@ -10,7 +10,7 @@ import { MemberModal } from './MemberModal'
 import { cn, getInitials, isUserOnline } from '../lib/utils'
 import { useAppData } from '../context/AppDataContext'
 
-import { formatDate } from '../lib/format'
+import { formatMessageTimestamp, parseTimestampCandidates } from '../lib/format'
 
 import { isAdmin } from '../lib/permissions'
 import {
@@ -20,7 +20,17 @@ import {
   validateChatAttachment,
 } from '../lib/chatAttachments'
 
+const MESSAGE_EDIT_WINDOW_MS = 10 * 60 * 1000
 
+function canEditMessage(msg) {
+  const candidates = parseTimestampCandidates(msg?.created_at)
+  if (!candidates.length) return false
+  const now = Date.now()
+  return candidates.some(t => {
+    const elapsed = now - t
+    return elapsed >= 0 && elapsed < MESSAGE_EDIT_WINDOW_MS
+  })
+}
 
 export function Chat({ profile, activeBucket }) {
   const { members, touchLastSeen, tasks } = useAppData()
@@ -28,7 +38,7 @@ export function Chat({ profile, activeBucket }) {
 
   const [messages, setMessages] = useState([])
   const [presenceByUserId, setPresenceByUserId] = useState({})
-  const [, setPresenceTick] = useState(0)
+  const [presenceTick, setPresenceTick] = useState(0)
 
   const [input, setInput] = useState('')
   const [pendingFiles, setPendingFiles] = useState([])
@@ -40,6 +50,10 @@ export function Chat({ profile, activeBucket }) {
   const [pinnedMsg, setPinnedMsg] = useState(null)
 
   const [openMenuId, setOpenMenuId] = useState(null)
+  const [editingId, setEditingId] = useState(null)
+  const [editText, setEditText] = useState('')
+  const [editSaving, setEditSaving] = useState(false)
+  const [editError, setEditError] = useState(null)
 
   const bottomRef = useRef(null)
   const fileInputRef = useRef(null)
@@ -86,10 +100,15 @@ export function Chat({ profile, activeBucket }) {
 
       })
 
-      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'messages', filter: `bucket=eq.${bucket}` }, () => {
-
-        loadMessages()
-
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'messages', filter: `bucket=eq.${bucket}` }, payload => {
+        const updated = payload.new
+        if (!updated?.id) return
+        if (updated.pinned) {
+          setPinnedMsg(updated)
+          setMessages(prev => prev.filter(m => m.id !== updated.id))
+        } else {
+          setMessages(prev => prev.map(m => (m.id === updated.id ? { ...m, ...updated } : m)))
+        }
       })
 
       .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'messages', filter: `bucket=eq.${bucket}` }, payload => {
@@ -172,15 +191,13 @@ export function Chat({ profile, activeBucket }) {
 
 
   useEffect(() => {
-
     if (openMenuId == null) return
-
-    const close = () => setOpenMenuId(null)
-
+    const close = (e) => {
+      if (e.target.closest('[data-chat-message-actions]')) return
+      setOpenMenuId(null)
+    }
     document.addEventListener('click', close)
-
     return () => document.removeEventListener('click', close)
-
   }, [openMenuId])
 
 
@@ -262,7 +279,52 @@ export function Chat({ profile, activeBucket }) {
     }
   }
 
+  const startEdit = (msg) => {
+    if (!canEditMessage(msg)) return
+    setEditError(null)
+    setEditingId(msg.id)
+    setEditText(msg.text || '')
+    setOpenMenuId(null)
+  }
 
+  const cancelEdit = () => {
+    setEditingId(null)
+    setEditText('')
+    setEditError(null)
+  }
+
+  const saveEdit = async (msg) => {
+    if (!canEditMessage(msg) || editSaving) return
+    const text = editText.trim()
+    const hasAttachments = (msg.attachments?.length ?? 0) > 0
+    if (!text && !hasAttachments) return
+
+    setEditSaving(true)
+    setEditError(null)
+    const updatedAt = new Date().toISOString()
+    const { data, error } = await supabase
+      .from('messages')
+      .update({ text: text || null, updated_at: updatedAt })
+      .eq('id', msg.id)
+      .eq('author_id', profile.id)
+      .select('id, text, updated_at')
+      .maybeSingle()
+    setEditSaving(false)
+
+    if (error || !data) {
+      setEditError(
+        error?.message?.includes('policy')
+          ? 'Úpravu zablokovalo oprávnění v databázi — spusť supabase/messages-edit-rls.sql.'
+          : 'Úpravu se nepodařilo uložit.'
+      )
+      return
+    }
+
+    setMessages(prev => prev.map(m => (
+      m.id === msg.id ? { ...m, text: data.text, updated_at: data.updated_at } : m
+    )))
+    cancelEdit()
+  }
 
   if (loading) return <div className="text-ctrl-text2 text-[13px]">Načítám zprávy...</div>
 
@@ -292,8 +354,10 @@ export function Chat({ profile, activeBucket }) {
       <div className="flex-1 overflow-y-auto flex flex-col gap-3 pb-3">
 
         {messages.map(m => {
+          void presenceTick
 
-          const isOwn = String(m.author_id) === String(profile.id)
+          const isOwn = String(m.author_id).toLowerCase() === String(profile.id).toLowerCase()
+          const editable = isOwn && canEditMessage(m)
           const { status, isOnline } = getAuthorPresence(m.author_id)
 
           return (
@@ -337,9 +401,13 @@ export function Chat({ profile, activeBucket }) {
 
               >
 
-                {isOwn && (
+                {isOwn && editingId !== m.id && (
 
-                  <div className="absolute top-1 right-1" onClick={e => e.stopPropagation()}>
+                  <div
+                    className="absolute top-1 right-1"
+                    data-chat-message-actions
+                    onMouseDown={e => e.stopPropagation()}
+                  >
 
                     <button
 
@@ -369,7 +437,23 @@ export function Chat({ profile, activeBucket }) {
 
                     {openMenuId === m.id && (
 
-                      <div className="absolute top-full right-0 mt-0.5 z-20 min-w-[120px] bg-ctrl-panel2 border border-ctrl-border shadow-[0_8px_24px_rgba(0,0,0,0.5)]">
+                      <div className="absolute bottom-full right-0 mb-0.5 z-20 min-w-[120px] bg-ctrl-panel2 border border-ctrl-border shadow-[0_8px_24px_rgba(0,0,0,0.5)]">
+
+                        <button
+                          type="button"
+                          className={cn(
+                            'w-full text-left py-2 px-3 text-[11px] font-mono transition-colors duration-200',
+                            editable
+                              ? 'text-ctrl-text hover:bg-ctrl-panel'
+                              : 'text-ctrl-text3 cursor-not-allowed opacity-50'
+                          )}
+                          title={editable ? undefined : 'Úpravu lze provést do 10 minut od odeslání'}
+                          disabled={!editable}
+                          onMouseDown={e => e.stopPropagation()}
+                          onClick={() => startEdit(m)}
+                        >
+                          Upravit
+                        </button>
 
                         <button
 
@@ -377,6 +461,7 @@ export function Chat({ profile, activeBucket }) {
 
                           className="w-full text-left py-2 px-3 text-[11px] font-mono text-ctrl-danger hover:bg-[rgba(255,51,102,0.1)] transition-colors duration-200"
 
+                          onMouseDown={e => e.stopPropagation()}
                           onClick={() => deleteMessage(m)}
 
                         >
@@ -409,12 +494,52 @@ export function Chat({ profile, activeBucket }) {
 
                 )}
 
-                {m.text ? (
+                {editingId === m.id ? (
+                  <div className="pr-5" onClick={e => e.stopPropagation()}>
+                    {editError && (
+                      <div className="text-ctrl-danger text-[10px] font-mono mb-2">{editError}</div>
+                    )}
+                    <textarea
+                      className="w-full min-h-[60px] bg-ctrl-panel border border-ctrl-border text-ctrl-text py-2 px-2.5 text-[13px] font-sans outline-none resize-y focus:border-ctrl-accent"
+                      value={editText}
+                      disabled={editSaving}
+                      autoFocus
+                      onChange={e => setEditText(e.target.value)}
+                      onKeyDown={e => {
+                        if (e.key === 'Escape') cancelEdit()
+                        if (e.key === 'Enter' && !e.shiftKey) {
+                          e.preventDefault()
+                          saveEdit(m)
+                        }
+                      }}
+                    />
+                    <div className="flex gap-2 mt-2 justify-end">
+                      <button
+                        type="button"
+                        className="text-[10px] font-mono text-ctrl-text2 hover:text-ctrl-text transition-colors"
+                        disabled={editSaving}
+                        onClick={cancelEdit}
+                      >
+                        Zrušit
+                      </button>
+                      <button
+                        type="button"
+                        className="text-[10px] font-mono text-ctrl-accent hover:text-ctrl-accent2 transition-colors disabled:opacity-50"
+                        disabled={editSaving || !canEditMessage(m) || (!editText.trim() && !(m.attachments?.length))}
+                        onClick={() => saveEdit(m)}
+                      >
+                        {editSaving ? '…' : 'Uložit'}
+                      </button>
+                    </div>
+                  </div>
+                ) : m.text ? (
                   <div className={cn('text-[13px] leading-normal', isOwn ? 'text-ctrl-text pr-5' : 'text-ctrl-text2')}>{m.text}</div>
                 ) : null}
                 <ChatMessageAttachments attachments={m.attachments} isOwn={isOwn} />
 
-                <div className={cn('font-mono text-[9px] text-ctrl-text2 mt-1', isOwn && 'text-right')}>{formatDate(m.created_at)}</div>
+                <div className={cn('font-mono text-[9px] text-ctrl-text2 mt-1', isOwn && 'text-right')}>
+                  {formatMessageTimestamp(m)}
+                </div>
 
               </div>
 

@@ -87,7 +87,7 @@ export function ChatMessageAttachments({ attachments, isOwn }) {
               <button
                 key={att.path}
                 type="button"
-                className="block max-w-[240px] rounded-sm overflow-hidden border border-ctrl-border hover:border-ctrl-accent transition-colors cursor-pointer-in p-0 bg-transparent text-left"
+                className="block max-w-[240px] rounded-sm overflow-hidden border border-ctrl-border hover:border-ctrl-accent transition-colors cursor-pointer p-0 bg-transparent text-left"
                 onClick={e => {
                   e.stopPropagation()
                   setLightbox({ src: url, alt: att.name })
