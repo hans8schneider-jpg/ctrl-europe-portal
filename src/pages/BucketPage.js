@@ -1,9 +1,10 @@
 import { useState } from 'react'
 import { useParams, Navigate } from 'react-router-dom'
-import { cn, getInitials } from '../lib/utils'
-import { bucketBarCls, bucketMemberAvCls } from '../constants/buckets'
+import { cn } from '../lib/utils'
+import { bucketBarCls } from '../constants/buckets'
 import { slugToBucket } from '../lib/bucketSlug'
 import { getAccessibleBuckets } from '../lib/permissions'
+import { BucketMemberStrip } from '../components/BucketMemberStrip'
 import { MemberModal } from '../components/MemberModal'
 import { Tasks } from '../components/Tasks'
 import { Chat } from '../components/Chat'
@@ -22,22 +23,19 @@ export function BucketPage() {
   const bucketMembers = members.filter(m => m.bucket === bucket || m.secondary_bucket === bucket)
   return (
     <div className="animate-fade-in">
-      <div className="flex items-center gap-3.5 mb-5">
+      <div className="flex items-start gap-3.5 mb-5">
         <div className={cn('w-1 h-9 shrink-0', bucketBarCls(bucket))} />
-        <div>
+        <div className="flex-1 min-w-0">
           <div className="text-xl font-extrabold">{bucket}</div>
           <div className="font-mono text-[10px] text-ctrl-text2 tracking-[2px] uppercase">
             {bucketMembers.length} členů
           </div>
         </div>
-        <div className="flex gap-1 ml-auto flex-wrap">
-          {bucketMembers.slice(0, 6).map(m => (
-            <div key={m.id} className={cn('w-6 h-6 flex items-center justify-center text-[9px] font-bold font-mono cursor-pointer transition-transform duration-200 hover:scale-[1.15] hover:z-[1]', bucketMemberAvCls(bucket))}
-              onClick={() => setSelectedMember(m)} title={m.name}>
-              {getInitials(m.name)}
-            </div>
-          ))}
-        </div>
+        <BucketMemberStrip
+          members={bucketMembers}
+          bucket={bucket}
+          onMemberClick={setSelectedMember}
+        />
       </div>
       {selectedMember && <MemberModal member={selectedMember} tasks={tasks} onClose={() => setSelectedMember(null)} />}
 
