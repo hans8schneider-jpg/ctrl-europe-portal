@@ -1,11 +1,14 @@
 import { createPortal } from 'react-dom'
 import { cn, getInitials, isUserOnline } from '../lib/utils'
 import { StatusBadge } from './StatusBadge'
-import { bucketAvCls } from '../constants/buckets'
+import { bucketAvCls, bucketOrganBadgeCls } from '../constants/buckets'
 import { ROLE_LABELS, roleBadgeCls } from '../constants/roles'
 import { getStatusMeta } from '../constants/status'
+import { getMemberBucketsForDisplay } from '../lib/permissions'
+import { useAppData } from '../context/AppDataContext'
 
 export function MemberModal({ member, tasks, onClose }) {
+  const { profile } = useAppData()
   if (!member) return null
   const memberTasks = tasks.filter(t => t.created_by === member.id || t.completed_by === member.id)
   const openTasks = memberTasks.filter(t => !t.done)
@@ -26,7 +29,16 @@ export function MemberModal({ member, tasks, onClose }) {
   const isOnline = isUserOnline(member.last_seen)
   const memberStatus = member.status || 'active'
   const statusMeta = getStatusMeta(memberStatus)
-  const buckets = [member.bucket, member.secondary_bucket].filter(Boolean).join(' · ')
+  const { teamBuckets, organBuckets, avatarBucket } =
+    getMemberBucketsForDisplay(member, profile?.layer)
+
+  const primaryTeam = teamBuckets[0]
+  const extraTeamBuckets = teamBuckets.slice(1)
+  const mergeRoleWithTeam =
+    primaryTeam && ['vedouci', 'clen'].includes(member.layer)
+
+  const badgeCls =
+    'inline-block font-mono text-[9px] py-1 px-2.5 tracking-[1.5px] uppercase'
 
   return createPortal(
     <div
@@ -52,7 +64,7 @@ export function MemberModal({ member, tasks, onClose }) {
               <div
                 className={cn(
                   'w-[72px] h-[72px] rounded-full flex items-center justify-center text-xl font-bold font-mono',
-                  bucketAvCls(member.bucket)
+                  bucketAvCls(avatarBucket)
                 )}
               >
                 {getInitials(member.name)}
@@ -69,16 +81,39 @@ export function MemberModal({ member, tasks, onClose }) {
               <h2 className="font-sans text-xl font-bold leading-snug tracking-normal text-ctrl-text mb-1.5">
                 {member.name}
               </h2>
-              <span
-                className={cn(
-                  'inline-block font-mono text-[9px] py-1 px-2.5 tracking-[1.5px] uppercase',
-                  roleBadgeCls(member.layer)
-                )}
-              >
-                {roleLabel}
-              </span>
-              {buckets && (
-                <p className="mt-2.5 text-[13px] text-ctrl-text2 leading-relaxed">{buckets}</p>
+              <div className="flex flex-col gap-1 items-start">
+                <span className={cn(badgeCls, roleBadgeCls(member.layer))}>
+                  {mergeRoleWithTeam ? `${roleLabel} · ${primaryTeam}` : roleLabel}
+                </span>
+                {!mergeRoleWithTeam &&
+                  teamBuckets.map(b => (
+                    <span key={b} className={cn(badgeCls, bucketOrganBadgeCls(b))}>
+                      {b}
+                    </span>
+                  ))}
+                {mergeRoleWithTeam &&
+                  extraTeamBuckets.map(b => (
+                    <span key={b} className={cn(badgeCls, bucketOrganBadgeCls(b))}>
+                      {b}
+                    </span>
+                  ))}
+                {organBuckets.map(b => (
+                  <span
+                    key={b}
+                    className={cn(
+                      badgeCls,
+                      'inline-flex items-center gap-1 border border-current/25',
+                      bucketOrganBadgeCls(b)
+                    )}
+                    title="Organizace"
+                  >
+                    <span className="text-[7px] tracking-[2px] opacity-70">ORG</span>
+                    {b}
+                  </span>
+                ))}
+              </div>
+              {member.role && (
+                <p className="mt-2.5 text-[13px] text-ctrl-text2 leading-relaxed">{member.role}</p>
               )}
             </div>
           </div>
