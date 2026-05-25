@@ -85,6 +85,12 @@ export function AppDataProvider({ session, children }) {
     [notifications]
   )
 
+  const patchMember = useCallback((memberId, patch) => {
+    setMembers(prev =>
+      prev.map(m => (String(m.id) === String(memberId) ? { ...m, ...patch } : m))
+    )
+  }, [])
+
   const admin = profile ? isAdmin(profile.layer) : false
   const adminPanelAccess = profile ? canAccessAdminPanel(profile.layer) : false
 
@@ -98,6 +104,7 @@ export function AppDataProvider({ session, children }) {
     events,
     setEvents,
     members,
+    patchMember,
     notifications,
     setNotifications,
     loadNotifications,

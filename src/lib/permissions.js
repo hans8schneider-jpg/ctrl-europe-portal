@@ -11,6 +11,32 @@ export const canAccessAdminPanel = (role) => ['admin', 'developer'].includes(rol
 export const canSeeMemberOrganBuckets = (layer) =>
   ['admin', 'developer', 'predsednictvo', 'zastupce_predsednictva'].includes(layer)
 
+/** Textová role v buňce (profiles.role) — člen/vedoucí/pozorovatel jen u člena a vedoucího */
+export const canSeeMemberBucketRole = (viewerLayer, memberLayer) => {
+  if (canSeeMemberOrganBuckets(viewerLayer)) return true
+  return ['clen', 'vedouci'].includes(memberLayer)
+}
+
+const profileBuckets = (p) =>
+  [p?.bucket, p?.secondary_bucket].filter(Boolean)
+
+export const memberSharesBucketWith = (viewer, member) => {
+  const viewerBuckets = profileBuckets(viewer)
+  const memberBuckets = profileBuckets(member)
+  return viewerBuckets.some(b => memberBuckets.includes(b))
+}
+
+/** Textová role v buňce (profiles.role) — ne člen/pozorovatel; vedoucí jen ve své buňce */
+export const canEditMemberBucketRole = (viewer, member) => {
+  if (!viewer || !member || viewer.id === member.id) return false
+  if (['clen', 'pozorovatel'].includes(viewer.layer)) return false
+  if (['admin', 'developer', 'predsednictvo', 'zastupce_predsednictva'].includes(viewer.layer)) {
+    return true
+  }
+  if (viewer.layer === 'vedouci') return memberSharesBucketWith(viewer, member)
+  return false
+}
+
 export function getMemberBucketsForDisplay(member, viewerLayer) {
   const assigned = [member.bucket, member.secondary_bucket].filter(Boolean)
   const teamBuckets = assigned.filter(b => TEAM_BUCKETS.includes(b))

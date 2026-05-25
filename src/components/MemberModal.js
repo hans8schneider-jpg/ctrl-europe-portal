@@ -1,22 +1,72 @@
+import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
+import { supabase } from '../supabase'
 import { cn, getInitials, isUserOnline } from '../lib/utils'
 import { StatusBadge } from './StatusBadge'
 import { bucketAvCls, bucketOrganBadgeCls } from '../constants/buckets'
 import { ROLE_LABELS, roleBadgeCls } from '../constants/roles'
 import { getStatusMeta } from '../constants/status'
-import { getMemberBucketsForDisplay } from '../lib/permissions'
+import {
+  canEditMemberBucketRole,
+  canSeeMemberBucketRole,
+  getMemberBucketsForDisplay,
+} from '../lib/permissions'
 import { useAppData } from '../context/AppDataContext'
 
+const roleInputCls =
+  'w-full bg-ctrl-bg2 border border-ctrl-border text-ctrl-text py-2 px-2.5 text-[13px] font-sans rounded outline-none transition-all duration-200 focus:border-ctrl-accent focus:shadow-[0_0_0_2px_rgba(42,107,255,0.1)]'
+
 export function MemberModal({ member, tasks, onClose }) {
-  const { profile } = useAppData()
-  if (!member) return null
-  const memberTasks = tasks.filter(t => t.created_by === member.id || t.completed_by === member.id)
+  const { profile, members, patchMember } = useAppData()
+  const liveMember = member
+    ? members.find(m => String(m.id) === String(member.id)) || member
+    : null
+  const [editingRole, setEditingRole] = useState(false)
+  const [roleDraft, setRoleDraft] = useState('')
+  const [roleSaving, setRoleSaving] = useState(false)
+  const [roleError, setRoleError] = useState(null)
+
+  useEffect(() => {
+    if (!liveMember) return
+    setEditingRole(false)
+    setRoleDraft(liveMember.role || '')
+    setRoleError(null)
+  }, [liveMember?.id, liveMember?.role])
+
+  if (!member || !liveMember) return null
+
+  const canSeeRole =
+    profile && canSeeMemberBucketRole(profile.layer, liveMember.layer)
+  const canEditRole =
+    canSeeRole && profile && canEditMemberBucketRole(profile, liveMember)
+
+  const saveBucketRole = async () => {
+    const next = roleDraft.trim()
+    setRoleSaving(true)
+    setRoleError(null)
+    const { error } = await supabase
+      .from('profiles')
+      .update({ role: next || null })
+      .eq('id', liveMember.id)
+    setRoleSaving(false)
+    if (error) {
+      setRoleError(
+        error.code === '42501' || error.message?.includes('policy')
+          ? 'Úpravu zablokovalo oprávnění v databázi — spusť supabase/profiles-role-edit-rls.sql.'
+          : error.message || 'Uložení se nepovedlo.'
+      )
+      return
+    }
+    patchMember(liveMember.id, { role: next || null })
+    setEditingRole(false)
+  }
+  const memberTasks = tasks.filter(t => t.created_by === liveMember.id || t.completed_by === liveMember.id)
   const openTasks = memberTasks.filter(t => !t.done)
   const doneTasks = memberTasks.filter(t => t.done)
 
-  const lastSeen = member.last_seen
+  const lastSeen = liveMember.last_seen
     ? (() => {
-        const d = new Date(member.last_seen)
+        const d = new Date(liveMember.last_seen)
         const diff = Math.floor((Date.now() - d) / 60000)
         if (diff < 2) return 'právě online'
         if (diff < 60) return `před ${diff} min`
@@ -25,17 +75,17 @@ export function MemberModal({ member, tasks, onClose }) {
       })()
     : 'neznámo'
 
-  const roleLabel = ROLE_LABELS[member.layer] || member.layer
-  const isOnline = isUserOnline(member.last_seen)
-  const memberStatus = member.status || 'active'
+  const roleLabel = ROLE_LABELS[liveMember.layer] || liveMember.layer
+  const isOnline = isUserOnline(liveMember.last_seen)
+  const memberStatus = liveMember.status || 'active'
   const statusMeta = getStatusMeta(memberStatus)
   const { teamBuckets, organBuckets, avatarBucket } =
-    getMemberBucketsForDisplay(member, profile?.layer)
+    getMemberBucketsForDisplay(liveMember, profile?.layer)
 
   const primaryTeam = teamBuckets[0]
   const extraTeamBuckets = teamBuckets.slice(1)
   const mergeRoleWithTeam =
-    primaryTeam && ['vedouci', 'clen'].includes(member.layer)
+    primaryTeam && ['vedouci', 'clen'].includes(liveMember.layer)
 
   const badgeCls =
     'inline-block font-mono text-[9px] py-1 px-2.5 tracking-[1.5px] uppercase'
@@ -67,7 +117,7 @@ export function MemberModal({ member, tasks, onClose }) {
                   bucketAvCls(avatarBucket)
                 )}
               >
-                {getInitials(member.name)}
+                {getInitials(liveMember.name)}
               </div>
               <StatusBadge
                 status={memberStatus}
@@ -79,10 +129,10 @@ export function MemberModal({ member, tasks, onClose }) {
 
             <div className="flex-1 min-w-0 pt-1">
               <h2 className="font-sans text-xl font-bold leading-snug tracking-normal text-ctrl-text mb-1.5">
-                {member.name}
+                {liveMember.name}
               </h2>
               <div className="flex flex-col gap-1 items-start">
-                <span className={cn(badgeCls, roleBadgeCls(member.layer))}>
+                <span className={cn(badgeCls, roleBadgeCls(liveMember.layer))}>
                   {mergeRoleWithTeam ? `${roleLabel} · ${primaryTeam}` : roleLabel}
                 </span>
                 {!mergeRoleWithTeam &&
@@ -112,8 +162,68 @@ export function MemberModal({ member, tasks, onClose }) {
                   </span>
                 ))}
               </div>
-              {member.role && (
-                <p className="mt-2.5 text-[13px] text-ctrl-text2 leading-relaxed">{member.role}</p>
+              {canSeeRole && (liveMember.role || canEditRole) && (
+                <div className="mt-2.5 min-w-0">
+                  {editingRole ? (
+                    <div className="space-y-2">
+                      <input
+                        type="text"
+                        className={roleInputCls}
+                        value={roleDraft}
+                        onChange={e => setRoleDraft(e.target.value)}
+                        placeholder="Role v buňce…"
+                        disabled={roleSaving}
+                        autoFocus
+                      />
+                      {roleError && (
+                        <p className="text-[10px] font-mono text-ctrl-danger leading-snug">{roleError}</p>
+                      )}
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          className="font-mono text-[9px] tracking-[1.5px] uppercase py-1.5 px-2.5 bg-ctrl-accent text-white border border-ctrl-accent rounded transition-opacity hover:opacity-90 disabled:opacity-50"
+                          onClick={saveBucketRole}
+                          disabled={roleSaving}
+                        >
+                          {roleSaving ? '…' : 'Uložit'}
+                        </button>
+                        <button
+                          type="button"
+                          className="font-mono text-[9px] tracking-[1.5px] uppercase py-1.5 px-2.5 text-ctrl-text2 border border-ctrl-border rounded transition-colors hover:border-ctrl-text2 hover:text-ctrl-text disabled:opacity-50"
+                          onClick={() => {
+                            setEditingRole(false)
+                            setRoleDraft(liveMember.role || '')
+                            setRoleError(null)
+                          }}
+                          disabled={roleSaving}
+                        >
+                          Zrušit
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex items-start gap-2 min-w-0">
+                      <p className="flex-1 min-w-0 text-[13px] text-ctrl-text2 leading-relaxed">
+                        {liveMember.role || (
+                          <span className="text-ctrl-text3 italic">Bez role v buňce</span>
+                        )}
+                      </p>
+                      {canEditRole && (
+                        <button
+                          type="button"
+                          className="shrink-0 font-mono text-[9px] tracking-[1.5px] uppercase py-1 px-2 text-ctrl-text2 border border-ctrl-border rounded transition-colors hover:border-ctrl-accent hover:text-ctrl-accent"
+                          onClick={() => {
+                            setRoleDraft(liveMember.role || '')
+                            setRoleError(null)
+                            setEditingRole(true)
+                          }}
+                        >
+                          Upravit
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </div>
               )}
             </div>
           </div>
@@ -176,8 +286,8 @@ export function MemberModal({ member, tasks, onClose }) {
         <div className="px-6 py-3.5 border-t border-ctrl-border bg-ctrl-bg2/30">
           <p className="font-mono text-[9px] text-ctrl-text3 tracking-wide">
             Člen od{' '}
-            {member.created_at
-              ? new Date(member.created_at).toLocaleDateString('cs-CZ')
+            {liveMember.created_at
+              ? new Date(liveMember.created_at).toLocaleDateString('cs-CZ')
               : 'neznámo'}
           </p>
         </div>
