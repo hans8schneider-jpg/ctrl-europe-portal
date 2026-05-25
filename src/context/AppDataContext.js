@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
 import { supabase } from '../supabase'
 import { canAccessAdminPanel, isAdmin } from '../lib/permissions'
+import { canViewerSeeTask } from '../lib/tasks'
 import {
   fetchNotificationsForUser,
   markNotificationsRead,
@@ -68,17 +69,25 @@ export function AppDataProvider({ session, children }) {
 
   const myOpenCount = useMemo(() => {
     if (!profile) return 0
-    return tasks.filter(t => !t.done && (t.bucket_target === profile.bucket || t.bucket_target === 'all')).length
+    const buckets = [profile.bucket, profile.secondary_bucket].filter(Boolean)
+    return tasks.filter(
+      t =>
+        !t.done &&
+        (t.bucket_target === 'all' || buckets.includes(t.bucket_target)) &&
+        canViewerSeeTask(t, profile)
+    ).length
   }, [tasks, profile])
 
   const openCountByBucket = useMemo(() => {
+    if (!profile) return {}
     const counts = {}
     for (const t of tasks) {
       if (t.done || !t.bucket_target) continue
+      if (!canViewerSeeTask(t, profile)) continue
       counts[t.bucket_target] = (counts[t.bucket_target] || 0) + 1
     }
     return counts
-  }, [tasks])
+  }, [tasks, profile])
 
   const unreadNotificationCount = useMemo(
     () => notifications.filter(n => !n.read).length,

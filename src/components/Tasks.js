@@ -1,14 +1,31 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { supabase } from '../supabase'
 import { Sec } from './ui/Sec'
 import { TaskModal } from './TaskModal'
 import { cn } from '../lib/utils'
 import { formatDate } from '../lib/format'
 import { canAddTasks, isAdmin } from '../lib/permissions'
-import { tagCls } from '../constants/styles'
+import {
+  PRIORITY_LABELS,
+  PRIORITY_OPTIONS,
+  assigneePayload,
+  canViewerSeeTask,
+  filterTasksForViewer,
+  getBucketMembers,
+  resolveAssigneeName,
+  sortBucketMembers,
+} from '../lib/tasks'
+import { tagCls, priorityCls } from '../constants/styles'
 import { useAppData } from '../context/AppDataContext'
 
-const emptyTask = { name: '', description: '', assignee: '', due: '', tag: 'other' }
+const emptyTask = {
+  name: '',
+  description: '',
+  assignee_id: '',
+  due: '',
+  tag: 'other',
+  priority: 'normal',
+}
 
 const TAG_LABELS = {
   other: 'Obecné',
@@ -20,7 +37,9 @@ const TAG_LABELS = {
 
 function TaskRow({ task, isDoneTab, canToggle, members, onSelect, onToggle }) {
   const completor = members?.find(m => m.id === task.completed_by)
+  const assigneeName = resolveAssigneeName(task, members)
   const tagLabel = TAG_LABELS[task.tag] || task.tag
+  const priorityLabel = PRIORITY_LABELS[task.priority] || PRIORITY_LABELS.normal
 
   return (
     <div
@@ -85,10 +104,10 @@ function TaskRow({ task, isDoneTab, canToggle, members, onSelect, onToggle }) {
         )}
 
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-          {task.assignee && (
+          {assigneeName && (
             <span className="font-mono text-[10px] text-ctrl-text2 tracking-wide">
               <span className="text-ctrl-text3 uppercase text-[9px] mr-1">Přiřazeno</span>
-              {task.assignee}
+              {assigneeName}
             </span>
           )}
           {task.due && (
@@ -110,7 +129,12 @@ function TaskRow({ task, isDoneTab, canToggle, members, onSelect, onToggle }) {
         )}
       </div>
 
-      <span className={cn(tagCls[task.tag] || tagCls.other, 'mt-0.5')}>{tagLabel}</span>
+      <div className="flex flex-col items-end gap-1.5 shrink-0 mt-0.5">
+        {task.priority && task.priority !== 'normal' && (
+          <span className={priorityCls[task.priority] || priorityCls.normal}>{priorityLabel}</span>
+        )}
+        <span className={tagCls[task.tag] || tagCls.other}>{tagLabel}</span>
+      </div>
     </div>
   )
 }
@@ -124,16 +148,42 @@ export function Tasks({ profile, tasks, setTasks, activeBucket }) {
   const canAdd = canAddTasks(profile.layer)
   const admin = isAdmin(profile.layer)
 
-  const myTasks = admin
-    ? tasks.filter(t => t.bucket_target === activeBucket || activeBucket === 'all' || !activeBucket)
-    : tasks.filter(t => t.bucket_target === profile.bucket || t.bucket_target === 'all')
+  const bucketScope = admin
+    ? activeBucket && activeBucket !== 'all'
+      ? activeBucket
+      : null
+    : activeBucket || profile.bucket
 
-  const openTasks = myTasks.filter(t => !t.done)
-  const doneTasks = myTasks
+  const visibleTasks = filterTasksForViewer(tasks, profile, {
+    bucket: bucketScope,
+    includeAll: !admin || Boolean(activeBucket),
+  })
+
+  const openTasks = visibleTasks.filter(t => !t.done)
+  const doneTasks = visibleTasks
     .filter(t => t.done)
     .sort((a, b) => String(b.completed_at || '').localeCompare(String(a.completed_at || '')))
   const displayTasks = activeTab === 'open' ? openTasks : doneTasks
   const canToggle = profile.layer !== 'pozorovatel'
+  const bucketMembers = sortBucketMembers(
+    getBucketMembers(members, activeBucket),
+    activeBucket
+  )
+
+  const handleTaskUpdated = (updated) => {
+    setTasks(prev => prev.map(t => (t.id === updated.id ? { ...t, ...updated } : t)))
+    setSelectedTask(prev => {
+      if (prev?.id !== updated.id) return prev
+      const merged = { ...prev, ...updated }
+      return canViewerSeeTask(merged, profile) ? merged : null
+    })
+  }
+
+  useEffect(() => {
+    if (selectedTask && !canViewerSeeTask(selectedTask, profile)) {
+      setSelectedTask(null)
+    }
+  }, [selectedTask, profile])
 
   const toggleTask = async (task) => {
     if (profile.layer === 'pozorovatel') return
@@ -153,11 +203,14 @@ export function Tasks({ profile, tasks, setTasks, activeBucket }) {
     if (!newTask.name.trim()) return
     const bucket_target = activeBucket || profile.bucket
     if (!bucket_target) return
+    const { assignee_id, assignee, priority, ...rest } = newTask
     const { data } = await supabase.from('tasks').insert([{
-      ...newTask,
+      ...rest,
       description: newTask.description.trim() || null,
       bucket_target,
-      created_by: profile.id
+      created_by: profile.id,
+      priority: priority || 'normal',
+      ...assigneePayload(assignee_id || null, members),
     }]).select()
     if (data) {
       const task = data[0]
@@ -193,7 +246,19 @@ export function Tasks({ profile, tasks, setTasks, activeBucket }) {
         <div className="bg-ctrl-panel border border-ctrl-accent p-4 mb-3.5 animate-fade-in">
           <div className="flex gap-2.5 mb-2.5 flex-wrap">
             <input className="flex-1 min-w-[140px] bg-ctrl-bg2 border border-ctrl-border text-ctrl-text py-[9px] px-3 text-[13px] font-sans outline-none transition-all duration-200 focus:border-ctrl-accent focus:shadow-[0_0_0_2px_rgba(42,107,255,0.1)]" placeholder="Název úkolu..." value={newTask.name} onChange={e => setNewTask(p => ({ ...p, name: e.target.value }))} />
-            <input className="flex-1 min-w-[140px] max-w-[160px] bg-ctrl-bg2 border border-ctrl-border text-ctrl-text py-[9px] px-3 text-[13px] font-sans outline-none transition-all duration-200 focus:border-ctrl-accent focus:shadow-[0_0_0_2px_rgba(42,107,255,0.1)]" placeholder="Přiřadit..." value={newTask.assignee} onChange={e => setNewTask(p => ({ ...p, assignee: e.target.value }))} />
+            <select
+              className="flex-1 min-w-[140px] max-w-[180px] bg-ctrl-bg2 border border-ctrl-border text-ctrl-text2 py-[9px] px-3 text-xs font-sans outline-none cursor-pointer transition-colors duration-200 focus:border-ctrl-accent"
+              value={newTask.assignee_id}
+              onChange={e => setNewTask(p => ({ ...p, assignee_id: e.target.value }))}
+            >
+              <option value="">Přiřadit člena…</option>
+              {bucketMembers.map(m => (
+                <option key={m.id} value={m.id}>
+                  {m.name}
+                  {m.layer === 'vedouci' && m.bucket === activeBucket ? ' · vedoucí' : ''}
+                </option>
+              ))}
+            </select>
             <input className="flex-1 min-w-[140px] max-w-[120px] bg-ctrl-bg2 border border-ctrl-border text-ctrl-text py-[9px] px-3 text-[13px] font-sans outline-none transition-all duration-200 focus:border-ctrl-accent focus:shadow-[0_0_0_2px_rgba(42,107,255,0.1)]" placeholder="Termín..." value={newTask.due} onChange={e => setNewTask(p => ({ ...p, due: e.target.value }))} />
           </div>
           <textarea
@@ -210,6 +275,11 @@ export function Tasks({ profile, tasks, setTasks, activeBucket }) {
               <option value="research">Research</option>
               <option value="social">Social</option>
               <option value="event">Event</option>
+            </select>
+            <select className="bg-ctrl-bg2 border border-ctrl-border text-ctrl-text2 py-[9px] px-3 text-xs font-sans outline-none cursor-pointer transition-colors duration-200 focus:border-ctrl-accent" value={newTask.priority} onChange={e => setNewTask(p => ({ ...p, priority: e.target.value }))}>
+              {PRIORITY_OPTIONS.map(p => (
+                <option key={p} value={p}>{PRIORITY_LABELS[p]}</option>
+              ))}
             </select>
             <button className="border-0 py-[9px] px-[18px] text-[11px] font-bold tracking-[2px] uppercase cursor-pointer font-sans transition-all duration-200 bg-ctrl-accent text-white hover:bg-ctrl-accent2 hover:-translate-y-px" onClick={addTask}>PŘIDAT</button>
             <button className="border-0 py-[9px] px-[18px] text-[11px] font-bold tracking-[2px] uppercase cursor-pointer font-sans transition-all duration-200 bg-transparent border border-ctrl-border text-ctrl-text2 hover:border-ctrl-text2 hover:text-ctrl-text" onClick={() => setShowAdd(false)}>ZRUŠIT</button>
@@ -277,8 +347,10 @@ export function Tasks({ profile, tasks, setTasks, activeBucket }) {
           task={selectedTask}
           members={members}
           profile={profile}
+          activeBucket={activeBucket}
           onClose={() => setSelectedTask(null)}
           onToggle={toggleTask}
+          onTaskUpdated={handleTaskUpdated}
         />
       )}
       {displayTasks.length === 0 && (

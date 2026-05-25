@@ -1,5 +1,12 @@
 import { cn } from '../lib/utils'
 
+export const priorityCls = {
+  low: cn('font-mono text-[9px] py-0.5 px-2 tracking-wide uppercase shrink-0', 'bg-ctrl-panel2 text-ctrl-text3'),
+  normal: cn('font-mono text-[9px] py-0.5 px-2 tracking-wide uppercase shrink-0', 'bg-ctrl-panel2 text-ctrl-text2'),
+  high: cn('font-mono text-[9px] py-0.5 px-2 tracking-wide uppercase shrink-0', 'bg-[rgba(255,184,0,0.12)] text-ctrl-warning'),
+  urgent: cn('font-mono text-[9px] py-0.5 px-2 tracking-wide uppercase shrink-0', 'bg-[rgba(255,51,102,0.12)] text-ctrl-danger'),
+}
+
 export const tagCls = {
   podcast: cn('font-mono text-[9px] py-0.5 px-2 tracking-wide uppercase shrink-0', 'bg-[rgba(180,79,255,0.12)] text-[#b44fff]'),
   research: cn('font-mono text-[9px] py-0.5 px-2 tracking-wide uppercase shrink-0', 'bg-[rgba(0,229,160,0.1)] text-ctrl-success'),

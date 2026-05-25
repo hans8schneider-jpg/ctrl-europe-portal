@@ -6,6 +6,7 @@ import { TextWithLinks } from '../components/TextWithLinks'
 import { cn } from '../lib/utils'
 import { formatDate } from '../lib/format'
 import { canManageNews, isAdmin } from '../lib/permissions'
+import { canViewerSeeTask, isTaskAssignee } from '../lib/tasks'
 import { newsDotCls, eventTypeCls } from '../constants/styles'
 import { useAppData } from '../context/AppDataContext'
 
@@ -25,10 +26,10 @@ export function DashboardPage() {
   const memberInProfileBuckets = (m) =>
     profileBuckets.includes(m.bucket) || profileBuckets.includes(m.secondary_bucket)
 
-  const relevantTasks = isCellScoped ? tasks.filter(taskInProfileBuckets) : tasks
-  const myOpenTasks = isCellScoped
-    ? relevantTasks.filter(t => !t.done)
-    : tasks.filter(t => !t.done && (t.bucket_target === 'all' || t.bucket_target === profile.bucket))
+  const relevantTasks = (isCellScoped ? tasks.filter(taskInProfileBuckets) : tasks).filter(t =>
+    canViewerSeeTask(t, profile)
+  )
+  const myOpenTasks = relevantTasks.filter(t => !t.done && isTaskAssignee(t, profile))
 
   const deleteNews = async (id) => {
     await supabase.from('news').delete().eq('id', id)

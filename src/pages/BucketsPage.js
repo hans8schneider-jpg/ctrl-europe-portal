@@ -5,6 +5,7 @@ import { cn, getInitials } from '../lib/utils'
 import { bucketBarCls, bucketLeaderRingCls, bucketMemberAvCls, bucketOrganBadgeCls, SPECIAL_BUCKETS } from '../constants/buckets'
 import { bucketPath } from '../lib/bucketSlug'
 import { getAccessibleBuckets } from '../lib/permissions'
+import { canViewerSeeTask } from '../lib/tasks'
 import { Sec } from '../components/ui/Sec'
 import { MemberModal } from '../components/MemberModal'
 import { useAppData } from '../context/AppDataContext'
@@ -133,7 +134,12 @@ export function BucketsPage() {
       <Sec>BUŇKY PROJEKTU</Sec>
       <div className="grid grid-cols-3 gap-3 mb-5 max-[900px]:grid-cols-2 max-[900px]:gap-2">
         {accessible.map(bucket => {
-          const bucketTasks = tasks.filter(t => (t.bucket_target === bucket || t.bucket_target === 'all') && !t.done)
+          const bucketTasks = tasks.filter(
+            t =>
+              (t.bucket_target === bucket || t.bucket_target === 'all') &&
+              !t.done &&
+              canViewerSeeTask(t, profile)
+          )
           const bucketMembers = members.filter(m => m.bucket === bucket || m.secondary_bucket === bucket)
           const isSpecial = SPECIAL_BUCKETS.includes(bucket)
           const menuOpen = openMenuBucket === bucket
