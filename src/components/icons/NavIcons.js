@@ -81,6 +81,15 @@ export function IconMenu({ className = 'w-5 h-5' }) {
   )
 }
 
+export function IconTasks({ className }) {
+  return (
+    <Icon className={className}>
+      <path d="M9 11l2 2 4-4" />
+      <path d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+    </Icon>
+  )
+}
+
 export function IconBell({ className }) {
   return (
     <Icon className={className}>

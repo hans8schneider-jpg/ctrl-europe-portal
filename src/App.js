@@ -8,6 +8,7 @@ import { DashboardPage } from './pages/DashboardPage'
 import { BucketsPage } from './pages/BucketsPage'
 import { BucketPage } from './pages/BucketPage'
 import { ProfilePage } from './pages/ProfilePage'
+import { MyTasksPage } from './pages/MyTasksPage'
 import { AdminPage } from './pages/AdminPage'
 import { canAccessAdminPanel } from './lib/permissions'
 import { useAppData } from './context/AppDataContext'
@@ -39,6 +40,7 @@ function AuthenticatedApp() {
       <Route element={<AppLayout />}>
         <Route index element={<DashboardPage />} />
         <Route path="bunky" element={<BucketsPage />} />
+        <Route path="moje-ukoly" element={<MyTasksPage />} />
         <Route path="bunka/:slug" element={<BucketPage />} />
         <Route path="profil" element={<ProfilePage />} />
         <Route path="admin" element={<AdminRoute />} />

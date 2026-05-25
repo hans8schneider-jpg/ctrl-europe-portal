@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { supabase } from '../supabase'
 import { Sec } from '../components/ui/Sec'
 import { EventModal } from '../components/EventModal'
@@ -6,12 +6,17 @@ import { TextWithLinks } from '../components/TextWithLinks'
 import { cn } from '../lib/utils'
 import { formatDate } from '../lib/format'
 import { canManageNews, isAdmin } from '../lib/permissions'
-import { canViewerSeeTask, isTaskAssignee } from '../lib/tasks'
+import { canViewerSeeTask } from '../lib/tasks'
+import { getMyAssignedOpenTasks } from '../lib/tasks'
 import { newsDotCls, eventTypeCls } from '../constants/styles'
 import { useAppData } from '../context/AppDataContext'
 
 export function DashboardPage() {
   const { profile, tasks, news, setNews, events, setEvents, members, loadNotifications } = useAppData()
+  const myOpenTasks = useMemo(
+    () => getMyAssignedOpenTasks(tasks, profile),
+    [tasks, profile]
+  )
   const [showAddNews, setShowAddNews] = useState(false)
   const [showAddEvent, setShowAddEvent] = useState(false)
   const [newNews, setNewNews] = useState({ title: '', body: '', tag: 'INFO', type: 'accent' })
@@ -29,8 +34,6 @@ export function DashboardPage() {
   const relevantTasks = (isCellScoped ? tasks.filter(taskInProfileBuckets) : tasks).filter(t =>
     canViewerSeeTask(t, profile)
   )
-  const myOpenTasks = relevantTasks.filter(t => !t.done && isTaskAssignee(t, profile))
-
   const deleteNews = async (id) => {
     await supabase.from('news').delete().eq('id', id)
     setNews(prev => prev.filter(n => n.id !== id))
@@ -84,7 +87,9 @@ export function DashboardPage() {
           <div className="font-mono text-[9px] tracking-[2px] uppercase text-ctrl-text2">Splněné úkoly</div>
         </div>
         <div className="p-5 bg-ctrl-panel border border-ctrl-border border-b-2 border-b-ctrl-warning relative overflow-hidden transition-all duration-[250ms] hover:border-ctrl-border2 hover:-translate-y-px max-[900px]:p-3.5">
-          <div className="font-mono text-4xl font-bold leading-none mb-1 max-[900px]:text-[26px] text-ctrl-warning">{myOpenTasks.length}</div>
+          <div className="font-mono text-4xl font-bold leading-none mb-1 max-[900px]:text-[26px] text-ctrl-warning">
+            {myOpenTasks.length}
+          </div>
           <div className="font-mono text-[9px] tracking-[2px] uppercase text-ctrl-text2">Moje úkoly</div>
         </div>
         <div className="p-5 bg-ctrl-panel border border-ctrl-border border-b-2 border-b-ctrl-info relative overflow-hidden transition-all duration-[250ms] hover:border-ctrl-border2 hover:-translate-y-px max-[900px]:p-3.5">

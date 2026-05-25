@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useParams, Navigate } from 'react-router-dom'
+import { useParams, Navigate, useSearchParams } from 'react-router-dom'
 import { cn } from '../lib/utils'
 import { bucketBarCls } from '../constants/buckets'
 import { slugToBucket } from '../lib/bucketSlug'
@@ -12,11 +12,20 @@ import { useAppData } from '../context/AppDataContext'
 
 export function BucketPage() {
   const { slug } = useParams()
+  const [searchParams, setSearchParams] = useSearchParams()
   const { profile, tasks, setTasks, members } = useAppData()
   const accessible = getAccessibleBuckets(profile)
   const bucket = slugToBucket(slug, accessible)
+  const highlightTaskId = searchParams.get('task')
   const [view, setView] = useState('tasks')
   const [selectedMember, setSelectedMember] = useState(null)
+
+  const clearTaskParam = () => {
+    if (!searchParams.has('task')) return
+    const next = new URLSearchParams(searchParams)
+    next.delete('task')
+    setSearchParams(next, { replace: true })
+  }
 
   if (!bucket) return <Navigate to="/bunky" replace />
 
@@ -44,7 +53,16 @@ export function BucketPage() {
         <div className={cn('py-2.5 px-5 font-mono text-[10px] tracking-[2px] uppercase cursor-pointer text-ctrl-text2 border-b-2 border-transparent -mb-px transition-all duration-200 hover:text-ctrl-text', view === 'chat' && 'text-ctrl-accent border-b-ctrl-accent')} onClick={() => setView('chat')}>CHAT</div>
       </div>
 
-      {view === 'tasks' && <Tasks profile={profile} tasks={tasks} setTasks={setTasks} activeBucket={bucket} />}
+      {view === 'tasks' && (
+        <Tasks
+          profile={profile}
+          tasks={tasks}
+          setTasks={setTasks}
+          activeBucket={bucket}
+          highlightTaskId={highlightTaskId}
+          onHighlightTaskConsumed={clearTaskParam}
+        />
+      )}
       {view === 'chat' && <Chat profile={profile} activeBucket={bucket} />}
     </div>
   )

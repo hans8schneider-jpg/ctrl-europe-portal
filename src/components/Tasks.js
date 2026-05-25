@@ -139,7 +139,14 @@ function TaskRow({ task, isDoneTab, canToggle, members, onSelect, onToggle }) {
   )
 }
 
-export function Tasks({ profile, tasks, setTasks, activeBucket }) {
+export function Tasks({
+  profile,
+  tasks,
+  setTasks,
+  activeBucket,
+  highlightTaskId,
+  onHighlightTaskConsumed,
+}) {
   const { members, profile: ctxProfile, loadNotifications } = useAppData()
   const [showAdd, setShowAdd] = useState(false)
   const [activeTab, setActiveTab] = useState('open')
@@ -184,6 +191,19 @@ export function Tasks({ profile, tasks, setTasks, activeBucket }) {
       setSelectedTask(null)
     }
   }, [selectedTask, profile])
+
+  useEffect(() => {
+    if (!highlightTaskId) return
+    const task = tasks.find(t => String(t.id) === String(highlightTaskId))
+    if (!task || !canViewerSeeTask(task, profile)) return
+    setSelectedTask(task)
+    setActiveTab(task.done ? 'done' : 'open')
+  }, [highlightTaskId, tasks, profile])
+
+  const closeTaskModal = () => {
+    setSelectedTask(null)
+    if (highlightTaskId) onHighlightTaskConsumed?.()
+  }
 
   const toggleTask = async (task) => {
     if (profile.layer === 'pozorovatel') return
@@ -348,7 +368,7 @@ export function Tasks({ profile, tasks, setTasks, activeBucket }) {
           members={members}
           profile={profile}
           activeBucket={activeBucket}
-          onClose={() => setSelectedTask(null)}
+          onClose={closeTaskModal}
           onToggle={toggleTask}
           onTaskUpdated={handleTaskUpdated}
         />

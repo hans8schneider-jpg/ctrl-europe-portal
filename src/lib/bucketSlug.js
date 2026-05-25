@@ -13,3 +13,9 @@ export const slugToBucket = (slug, buckets = ALL_BUCKETS) =>
   buckets.find((b) => bucketToSlug(b) === slug) ?? null
 
 export const bucketPath = (bucket) => `/bunka/${bucketToSlug(bucket)}`
+
+export const bucketTaskPath = (bucket, taskId) => {
+  const base = bucketPath(bucket)
+  if (!taskId) return base
+  return `${base}?task=${encodeURIComponent(taskId)}`
+}

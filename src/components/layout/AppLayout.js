@@ -10,6 +10,7 @@ import { ROLE_LABELS, roleBadgeCls } from '../../constants/roles'
 import { getStatusMeta } from '../../constants/status'
 import { useAppData } from '../../context/AppDataContext'
 import { MobileBottomNav } from '../MobileBottomNav'
+import { MyTasksNav } from '../MyTasksNav'
 import { NotificationsDropdown } from '../NotificationsDropdown'
 import { ReportModal } from '../ReportModal'
 import { IconAdmin, IconArrowLeft, IconCells, IconDashboard, IconProfile, IconReport } from '../icons/NavIcons'
@@ -24,6 +25,7 @@ const NAV_MAIN = [
 const PAGE_TITLES = {
   '/': 'Dashboard',
   '/bunky': 'Buňky',
+  '/moje-ukoly': 'Moje úkoly',
   '/profil': 'Profil',
   '/admin': 'Admin',
 }
@@ -122,6 +124,11 @@ export function AppLayout() {
               <span>{n.label}</span>
             </NavLink>
           ))}
+
+          <div className="py-2.5 px-5 pb-1 font-mono text-[8px] tracking-[3px] text-ctrl-text3 uppercase">
+            Úkoly
+          </div>
+          <MyTasksNav variant="sidebar" navLinkCls={navLinkCls} />
 
           {teamBuckets.length > 0 && (
             <>

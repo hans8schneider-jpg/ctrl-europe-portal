@@ -9,6 +9,20 @@ export const PRIORITY_LABELS = {
 
 export const PRIORITY_OPTIONS = ['low', 'normal', 'high', 'urgent']
 
+const PRIORITY_SORT = { urgent: 0, high: 1, normal: 2, low: 3 }
+
+export function getMyAssignedOpenTasks(tasks, profile) {
+  if (!profile) return []
+  return (tasks || [])
+    .filter(t => !t.done && isTaskAssignee(t, profile) && canViewerSeeTask(t, profile))
+    .sort((a, b) => {
+      const pa = PRIORITY_SORT[a.priority] ?? 2
+      const pb = PRIORITY_SORT[b.priority] ?? 2
+      if (pa !== pb) return pa - pb
+      return String(a.due || '').localeCompare(String(b.due || ''), 'cs')
+    })
+}
+
 export const canManageTasks = (layer) => canAddTasks(layer)
 
 const isBucketLeader = (member, bucket) =>
@@ -77,6 +91,11 @@ export function filterTasksInBucket(tasks, bucket, { includeAll = true } = {}) {
   return (tasks || []).filter(
     t => t.bucket_target === bucket || (includeAll && t.bucket_target === 'all')
   )
+}
+
+export function getTaskBucket(task, fallbackBucket) {
+  if (task?.bucket_target && task.bucket_target !== 'all') return task.bucket_target
+  return fallbackBucket || null
 }
 
 export function filterTasksForViewer(tasks, viewer, options = {}) {

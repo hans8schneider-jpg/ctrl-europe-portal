@@ -4,14 +4,17 @@ import { cn } from '../lib/utils'
 import { TEAM_BUCKETS, SPECIAL_BUCKETS } from '../constants/buckets'
 import { bucketDotCls } from '../constants/buckets'
 import { bucketPath } from '../lib/bucketSlug'
+import { getMyAssignedOpenTasks } from '../lib/tasks'
 import { useAppData } from '../context/AppDataContext'
 import { ReportModal } from './ReportModal'
-import { IconAdmin, IconCells, IconDashboard, IconMenu, IconProfile, IconReport } from './icons/NavIcons'
+import { MyTasksNav } from './MyTasksNav'
+import { IconAdmin, IconCells, IconDashboard, IconMenu, IconProfile, IconReport, IconTasks } from './icons/NavIcons'
 
 export function MobileBottomNav({ accessibleBuckets, activeBucketSlug }) {
   const navigate = useNavigate()
   const location = useLocation()
-  const { profile, openCountByBucket, adminPanelAccess } = useAppData()
+  const { profile, tasks, openCountByBucket, adminPanelAccess } = useAppData()
+  const myTasksCount = getMyAssignedOpenTasks(tasks, profile).length
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [reportModalOpen, setReportModalOpen] = useState(false)
 
@@ -20,6 +23,7 @@ export function MobileBottomNav({ accessibleBuckets, activeBucketSlug }) {
 
   const navItems = [
     { path: '/', label: 'Hlavní', Icon: IconDashboard, end: true },
+    { path: '/moje-ukoly', label: 'Úkoly', Icon: IconTasks, badge: myTasksCount },
     { path: '/bunky', label: 'Buňky', Icon: IconCells },
     { path: '/profil', label: 'Profil', Icon: IconProfile },
     ...(adminPanelAccess ? [{ path: '/admin', label: 'Admin', Icon: IconAdmin }] : []),
@@ -41,12 +45,18 @@ export function MobileBottomNav({ accessibleBuckets, activeBucketSlug }) {
           <div
             key={n.path}
             className={cn(
-              'flex flex-col items-center justify-center gap-0.5 py-2 px-2.5 cursor-pointer flex-1 text-ctrl-text2 transition-all duration-150 relative rounded-lg active:scale-90',
-              isNavActive(n.path, n.end) && 'text-ctrl-accent bg-[rgba(42,107,255,0.1)]'
+              'relative flex flex-col items-center justify-center gap-0.5 py-2 px-2.5 cursor-pointer flex-1 text-ctrl-text2 transition-all duration-150 rounded-lg active:scale-90',
+              isNavActive(n.path, n.end) && 'text-ctrl-accent bg-[rgba(42,107,255,0.1)]',
+              n.path === '/moje-ukoly' && isNavActive(n.path, n.end) && 'text-ctrl-warning bg-[rgba(255,184,0,0.1)]'
             )}
             onClick={() => { navigate(n.path); setDrawerOpen(false) }}
           >
             <n.Icon className="w-5 h-5" />
+            {n.badge > 0 && (
+              <span className="absolute top-1 right-1/4 min-w-[14px] h-[14px] px-0.5 flex items-center justify-center rounded-full bg-ctrl-warning text-white text-[8px] font-mono tabular-nums">
+                {n.badge > 9 ? '9+' : n.badge}
+              </span>
+            )}
             <span className="font-mono text-[8px] tracking-wide uppercase">{n.label}</span>
           </div>
         ))}
