@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import { supabase } from '../supabase'
 import { cn } from '../lib/utils'
 import {
+  downloadChatAttachment,
   formatFileSize,
   getSignedAttachmentUrl,
   isImageMime,
@@ -10,6 +11,9 @@ import {
 } from '../lib/chatAttachments'
 
 function ImageLightbox({ src, alt, onClose }) {
+  const [downloading, setDownloading] = useState(false)
+  const [downloadError, setDownloadError] = useState(null)
+
   useEffect(() => {
     const onKey = e => { if (e.key === 'Escape') onClose() }
     document.addEventListener('keydown', onKey)
@@ -21,6 +25,19 @@ function ImageLightbox({ src, alt, onClose }) {
     }
   }, [onClose])
 
+  const handleDownload = async e => {
+    e.stopPropagation()
+    setDownloadError(null)
+    setDownloading(true)
+    try {
+      await downloadChatAttachment(src, alt || 'soubor')
+    } catch {
+      setDownloadError('Stažení se nezdařilo.')
+    } finally {
+      setDownloading(false)
+    }
+  }
+
   return createPortal(
     <div
       className="fixed inset-0 z-[95] flex items-center justify-center p-4 sm:p-8 bg-[rgba(0,0,0,0.88)] backdrop-blur-sm max-[900px]:bottom-[70px]"
@@ -29,23 +46,41 @@ function ImageLightbox({ src, alt, onClose }) {
       aria-modal="true"
       aria-label={alt || 'Náhled obrázku'}
     >
-      <button
-        type="button"
-        className="absolute top-4 right-4 w-10 h-10 flex items-center justify-center rounded border border-ctrl-border text-ctrl-text2 text-xl leading-none cursor-pointer transition-colors hover:border-ctrl-text hover:text-ctrl-text z-10"
-        aria-label="Zavřít"
-        onClick={onClose}
-      >
-        ×
-      </button>
+      <div className="absolute top-4 right-4 flex items-center gap-2 z-10">
+        <button
+          type="button"
+          className="h-10 px-3 flex items-center justify-center rounded border border-ctrl-border text-[11px] font-mono text-ctrl-text2 cursor-pointer transition-colors hover:border-ctrl-accent hover:text-ctrl-accent disabled:opacity-50 disabled:cursor-not-allowed"
+          aria-label="Stáhnout soubor"
+          disabled={downloading}
+          onClick={handleDownload}
+        >
+          {downloading ? '…' : 'Stáhnout'}
+        </button>
+        <button
+          type="button"
+          className="w-10 h-10 flex items-center justify-center rounded border border-ctrl-border text-ctrl-text2 text-xl leading-none cursor-pointer transition-colors hover:border-ctrl-text hover:text-ctrl-text"
+          aria-label="Zavřít"
+          onClick={onClose}
+        >
+          ×
+        </button>
+      </div>
       <img
         src={src}
         alt={alt}
         className="max-w-full max-h-[calc(100vh-4rem)] w-auto h-auto object-contain select-none"
         onClick={e => e.stopPropagation()}
       />
-      {alt && (
-        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 max-w-[90vw] px-3 py-1.5 text-[11px] font-mono text-ctrl-text2 bg-ctrl-panel/90 border border-ctrl-border truncate">
-          {alt}
+      {(alt || downloadError) && (
+        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 max-w-[90vw] flex flex-col items-center gap-1.5">
+          {alt && (
+            <div className="px-3 py-1.5 text-[11px] font-mono text-ctrl-text2 bg-ctrl-panel/90 border border-ctrl-border truncate max-w-full">
+              {alt}
+            </div>
+          )}
+          {downloadError && (
+            <div className="text-[10px] font-mono text-ctrl-danger">{downloadError}</div>
+          )}
         </div>
       )}
     </div>,

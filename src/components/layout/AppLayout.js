@@ -107,7 +107,7 @@ export function AppLayout() {
     <div className="flex min-h-screen">
       <aside className="w-[230px] min-h-screen bg-ctrl-panel border-r border-ctrl-border flex flex-col fixed left-0 top-0 bottom-0 z-[200] max-[900px]:hidden">
         <div className="py-6 px-5 pb-4 border-b border-ctrl-border relative overflow-hidden">
-          <div className="font-mono text-[28px] font-bold tracking-[-1px] relative inline-block">
+          <div className="font-mono text-[28px] font-bold tracking-[-1px] relative inline-block cursor-default">
             [<span className="text-ctrl-accent">CTRL</span>]
             <span className="absolute inset-0 text-ctrl-danger opacity-0 animate-glitch pointer-events-none" aria-hidden>[CTRL]</span>
           </div>

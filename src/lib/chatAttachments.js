@@ -89,6 +89,18 @@ export async function getSignedAttachmentUrl(supabase, path) {
   return data.signedUrl
 }
 
+export async function downloadChatAttachment(url, filename) {
+  const res = await fetch(url)
+  if (!res.ok) throw new Error('Stažení se nezdařilo.')
+  const blob = await res.blob()
+  const objectUrl = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = objectUrl
+  a.download = sanitizeFileName(filename)
+  a.click()
+  URL.revokeObjectURL(objectUrl)
+}
+
 export async function removeChatAttachments(supabase, attachments) {
   const paths = parseAttachments(attachments).map(a => a.path)
   if (!paths.length) return
