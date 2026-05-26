@@ -24,6 +24,7 @@ const BUCKET_STAT_TEXT = {
   'Video': 'text-[#ff3366]',
   'Mezinárodní': 'text-[#00e5a0]',
   'Eventy': 'text-[#00e5a0]',
+  'TikTok': 'text-[#25f4ee]',
   'Rada zástupců': 'text-[#ffb800]',
   'Předsednictvo': 'text-[#b44fff]',
 }
