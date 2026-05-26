@@ -89,6 +89,7 @@ export const getAccessibleBuckets = (profile) => {
   const buckets = [bucket]
   if (secondary_bucket) buckets.push(secondary_bucket)
   if (layer === 'vedouci') buckets.push('Rada zástupců')
+  if (layer === 'developer') buckets.push('Developeři')
   if (layer === 'predsednictvo' || layer === 'zastupce_predsednictva') buckets.push('Předsednictvo')
   return [...new Set(buckets)]
 }

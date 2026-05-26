@@ -1,6 +1,6 @@
 export const TEAM_BUCKETS = [
   'PR a komunikace', 'Sociální sítě', 'Podcast', 'Research',
-  'Grafika', 'Video', 'Mezinárodní', 'Eventy', 'TikTok',
+  'Grafika', 'Video', 'Mezinárodní', 'Eventy', 'TikTok', 'Developeři',
 ]
 
 export const SPECIAL_BUCKETS = ['Rada zástupců', 'Předsednictvo']
@@ -17,6 +17,7 @@ export const BUCKET_AV_CLS = {
   'Mezinárodní': 'bg-[rgba(0,229,160,0.15)] border border-[rgba(0,229,160,0.31)] text-ctrl-success',
   'Eventy': 'bg-[rgba(0,229,160,0.15)] border border-[rgba(0,229,160,0.31)] text-ctrl-success',
   'TikTok': 'bg-[rgba(37,244,238,0.15)] border border-[rgba(37,244,238,0.31)] text-[#25f4ee]',
+  'Developeři': 'bg-[rgba(0,212,255,0.15)] border border-[rgba(0,212,255,0.31)] text-ctrl-info',
   'Rada zástupců': 'bg-[rgba(255,184,0,0.15)] border border-[rgba(255,184,0,0.31)] text-[#ffb800]',
   'Předsednictvo': 'bg-[rgba(180,79,255,0.15)] border border-[rgba(180,79,255,0.31)] text-[#b44fff]',
 }
@@ -34,6 +35,7 @@ export const BUCKET_DOT_CLS = {
   'Mezinárodní': 'bg-[#00e5a0]',
   'Eventy': 'bg-[#00e5a0]',
   'TikTok': 'bg-[#25f4ee]',
+  'Developeři': 'bg-[#00d4ff]',
   'Rada zástupců': 'bg-[#ffb800]',
   'Předsednictvo': 'bg-[#b44fff]',
 }
@@ -51,6 +53,7 @@ export const BUCKET_MEMBER_AV_CLS = {
   'Mezinárodní': 'bg-[rgba(0,229,160,0.13)] border border-[rgba(0,229,160,0.27)] text-[#00e5a0]',
   'Eventy': 'bg-[rgba(0,229,160,0.13)] border border-[rgba(0,229,160,0.27)] text-[#00e5a0]',
   'TikTok': 'bg-[rgba(37,244,238,0.13)] border border-[rgba(37,244,238,0.27)] text-[#25f4ee]',
+  'Developeři': 'bg-[rgba(0,212,255,0.13)] border border-[rgba(0,212,255,0.27)] text-[#00d4ff]',
   'Rada zástupců': 'bg-[rgba(255,184,0,0.13)] border border-[rgba(255,184,0,0.27)] text-[#ffb800]',
   'Předsednictvo': 'bg-[rgba(180,79,255,0.13)] border border-[rgba(180,79,255,0.27)] text-[#b44fff]',
 }
@@ -69,6 +72,7 @@ export const BUCKET_LEADER_RING_CLS = {
   'Mezinárodní': 'border-[#00e5a0] shadow-[0_0_0_1px_rgba(0,229,160,0.45)]',
   'Eventy': 'border-[#00e5a0] shadow-[0_0_0_1px_rgba(0,229,160,0.45)]',
   'TikTok': 'border-[#25f4ee] shadow-[0_0_0_1px_rgba(37,244,238,0.45)]',
+  'Developeři': 'border-[#00d4ff] shadow-[0_0_0_1px_rgba(0,212,255,0.45)]',
   'Rada zástupců': 'border-[#ffb800] shadow-[0_0_0_1px_rgba(255,184,0,0.5)]',
   'Předsednictvo': 'border-[#b44fff] shadow-[0_0_0_1px_rgba(180,79,255,0.5)]',
 }
@@ -86,6 +90,7 @@ export const BUCKET_ORGAN_BADGE_CLS = {
   'Mezinárodní': 'bg-[rgba(0,229,160,0.13)] text-[#00e5a0]',
   'Eventy': 'bg-[rgba(0,229,160,0.13)] text-[#00e5a0]',
   'TikTok': 'bg-[rgba(37,244,238,0.13)] text-[#25f4ee]',
+  'Developeři': 'bg-[rgba(0,212,255,0.13)] text-[#00d4ff]',
   'Rada zástupců': 'bg-[rgba(255,184,0,0.13)] text-[#ffb800]',
   'Předsednictvo': 'bg-[rgba(180,79,255,0.13)] text-[#b44fff]',
 }
