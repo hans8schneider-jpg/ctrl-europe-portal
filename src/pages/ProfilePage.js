@@ -111,8 +111,8 @@ export function ProfilePage() {
       </div>
 
       <div className="grid gap-4 grid-cols-[280px_1fr] max-[900px]:grid-cols-1">
-        <div className={cn(panelCls, 'overflow-hidden min-w-0')}>
-          <div className="relative px-6 pt-6 pb-5 border-b border-ctrl-border bg-gradient-to-b from-ctrl-panel2/50 to-transparent">
+        <div className={cn(panelCls, 'min-w-0')}>
+          <div className="relative px-6 pt-6 pb-5 border-b border-ctrl-border bg-gradient-to-b from-ctrl-panel2/50 to-transparent overflow-hidden">
             <div className="flex flex-col items-center text-center">
               <div className="relative mb-4">
                 <div

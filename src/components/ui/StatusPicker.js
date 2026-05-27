@@ -1,6 +1,10 @@
-import { useEffect, useId, useRef, useState } from 'react'
+import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { cn } from '../../lib/utils'
 import { STATUS_CONFIG } from '../../constants/status'
+
+const MENU_GAP = 4
+const VIEWPORT_PAD = 8
 
 function StatusDot({ status, className }) {
   return (
@@ -19,14 +23,61 @@ function StatusDot({ status, className }) {
 
 export function StatusPicker({ value, onChange, disabled = false, className }) {
   const [open, setOpen] = useState(false)
-  const rootRef = useRef(null)
+  const [menuStyle, setMenuStyle] = useState(null)
+  const triggerRef = useRef(null)
+  const menuRef = useRef(null)
   const listId = useId()
   const current = STATUS_CONFIG[value] || STATUS_CONFIG.active
+
+  const updateMenuPosition = () => {
+    const trigger = triggerRef.current
+    const menu = menuRef.current
+    if (!trigger || !menu) return
+
+    const rect = trigger.getBoundingClientRect()
+    const menuHeight = menu.offsetHeight
+    const spaceBelow = window.innerHeight - rect.bottom - VIEWPORT_PAD
+    const spaceAbove = rect.top - VIEWPORT_PAD
+    const openUp = spaceBelow < menuHeight + MENU_GAP && spaceAbove >= spaceBelow
+
+    let top
+    if (openUp) {
+      top = Math.max(VIEWPORT_PAD, rect.top - menuHeight - MENU_GAP)
+    } else {
+      top = Math.min(
+        window.innerHeight - menuHeight - VIEWPORT_PAD,
+        rect.bottom + MENU_GAP
+      )
+    }
+
+    setMenuStyle({
+      top,
+      left: rect.left,
+      width: rect.width,
+    })
+  }
+
+  useLayoutEffect(() => {
+    if (!open) {
+      setMenuStyle(null)
+      return
+    }
+    updateMenuPosition()
+    window.addEventListener('resize', updateMenuPosition)
+    window.addEventListener('scroll', updateMenuPosition, true)
+    return () => {
+      window.removeEventListener('resize', updateMenuPosition)
+      window.removeEventListener('scroll', updateMenuPosition, true)
+    }
+  }, [open, value])
 
   useEffect(() => {
     if (!open) return
     const onPointerDown = e => {
-      if (rootRef.current && !rootRef.current.contains(e.target)) setOpen(false)
+      const t = triggerRef.current
+      const m = menuRef.current
+      if (t?.contains(e.target) || m?.contains(e.target)) return
+      setOpen(false)
     }
     const onKeyDown = e => {
       if (e.key === 'Escape') setOpen(false)
@@ -48,9 +99,70 @@ export function StatusPicker({ value, onChange, disabled = false, className }) {
     setOpen(false)
   }
 
+  const menu = open && (
+    <ul
+      ref={menuRef}
+      id={listId}
+      role="listbox"
+      aria-label="Stav"
+      style={
+        menuStyle
+          ? {
+              position: 'fixed',
+              top: menuStyle.top,
+              left: menuStyle.left,
+              width: menuStyle.width,
+              zIndex: 350,
+            }
+          : { position: 'fixed', left: -9999, top: -9999, visibility: 'hidden', zIndex: 350 }
+      }
+      className="bg-ctrl-panel border border-ctrl-border shadow-[0_12px_40px_rgba(0,0,0,0.45)] animate-fade-in"
+    >
+      {Object.entries(STATUS_CONFIG).map(([key, opt]) => {
+        const selected = key === value
+        return (
+          <li key={key} role="option" aria-selected={selected}>
+            <button
+              type="button"
+              className={cn(
+                'w-full flex items-start gap-2.5 py-2.5 px-3 text-left border-0 bg-transparent cursor-pointer transition-colors duration-150',
+                'hover:bg-[rgba(42,107,255,0.06)]',
+                selected && 'bg-[rgba(42,107,255,0.08)]'
+              )}
+              onClick={() => pick(key)}
+            >
+              <StatusDot status={key} className="mt-1.5" />
+              <span className="flex-1 min-w-0">
+                <span
+                  className={cn(
+                    'block text-[13px] font-medium',
+                    selected ? opt.textCls : 'text-ctrl-text'
+                  )}
+                >
+                  {opt.label}
+                </span>
+                {opt.hint && (
+                  <span className="block font-mono text-[9px] text-ctrl-text2 tracking-wide mt-0.5 leading-snug">
+                    {opt.hint}
+                  </span>
+                )}
+              </span>
+              {selected && (
+                <span className={cn('font-mono text-[10px] shrink-0 mt-0.5', opt.textCls)} aria-hidden>
+                  ✓
+                </span>
+              )}
+            </button>
+          </li>
+        )
+      })}
+    </ul>
+  )
+
   return (
-    <div ref={rootRef} className={cn('relative', className)}>
+    <div className={cn('relative', className)}>
       <button
+        ref={triggerRef}
         type="button"
         disabled={disabled}
         aria-haspopup="listbox"
@@ -78,53 +190,7 @@ export function StatusPicker({ value, onChange, disabled = false, className }) {
         </span>
       </button>
 
-      {open && (
-        <ul
-          id={listId}
-          role="listbox"
-          aria-label="Stav"
-          className="absolute z-30 left-0 right-0 top-[calc(100%+4px)] bg-ctrl-panel border border-ctrl-border shadow-[0_12px_40px_rgba(0,0,0,0.45)] animate-fade-in overflow-hidden"
-        >
-          {Object.entries(STATUS_CONFIG).map(([key, opt]) => {
-            const selected = key === value
-            return (
-              <li key={key} role="option" aria-selected={selected}>
-                <button
-                  type="button"
-                  className={cn(
-                    'w-full flex items-start gap-2.5 py-2.5 px-3 text-left border-0 bg-transparent cursor-pointer transition-colors duration-150',
-                    'hover:bg-[rgba(42,107,255,0.06)]',
-                    selected && 'bg-[rgba(42,107,255,0.08)]'
-                  )}
-                  onClick={() => pick(key)}
-                >
-                  <StatusDot status={key} className="mt-1.5" />
-                  <span className="flex-1 min-w-0">
-                    <span
-                      className={cn(
-                        'block text-[13px] font-medium',
-                        selected ? opt.textCls : 'text-ctrl-text'
-                      )}
-                    >
-                      {opt.label}
-                    </span>
-                    {opt.hint && (
-                      <span className="block font-mono text-[9px] text-ctrl-text2 tracking-wide mt-0.5 leading-snug">
-                        {opt.hint}
-                      </span>
-                    )}
-                  </span>
-                  {selected && (
-                    <span className={cn('font-mono text-[10px] shrink-0 mt-0.5', opt.textCls)} aria-hidden>
-                      ✓
-                    </span>
-                  )}
-                </button>
-              </li>
-            )
-          })}
-        </ul>
-      )}
+      {menu && createPortal(menu, document.body)}
     </div>
   )
 }
