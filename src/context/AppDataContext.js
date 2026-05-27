@@ -2,6 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { supabase } from '../supabase'
 import { canAccessAdminPanel, isAdmin } from '../lib/permissions'
 import { canViewerSeeTask } from '../lib/tasks'
+import { applyBucketRows } from '../constants/buckets'
 import {
   fetchNotificationsForUser,
   markNotificationsRead,
@@ -16,6 +17,7 @@ export function AppDataProvider({ session, children }) {
   const [news, setNews] = useState([])
   const [events, setEvents] = useState([])
   const [members, setMembers] = useState([])
+  const [bucketCatalogVersion, setBucketCatalogVersion] = useState(0)
   const [notifications, setNotifications] = useState([])
   const [loading, setLoading] = useState(true)
 
@@ -49,13 +51,25 @@ export function AppDataProvider({ session, children }) {
     const load = async () => {
       await touchLastSeen()
 
-      const [{ data: prof }, { data: taskData }, { data: newsData }, { data: eventData }, { data: memberData }] = await Promise.all([
+      const [
+        { data: prof },
+        { data: taskData },
+        { data: newsData },
+        { data: eventData },
+        { data: memberData },
+        { data: bucketData },
+      ] = await Promise.all([
         supabase.from('profiles').select('*').eq('id', session.user.id).single(),
         supabase.from('tasks').select('*').order('created_at', { ascending: false }),
         supabase.from('news').select('*').order('created_at', { ascending: false }).limit(20),
         supabase.from('events').select('*').order('date', { ascending: false }),
         supabase.from('profiles').select('*').order('name'),
+        supabase.from('buckets').select('*').eq('is_active', true).order('sort_order', { ascending: true }),
       ])
+      if (bucketData) {
+        applyBucketRows(bucketData)
+        setBucketCatalogVersion(v => v + 1)
+      }
       if (prof) setProfile(prof)
       if (taskData) setTasks(taskData)
       if (newsData) setNews(newsData)
@@ -78,6 +92,18 @@ export function AppDataProvider({ session, children }) {
 
   useEffect(() => {
     if (!session) return
+
+    const refreshBuckets = async () => {
+      const { data } = await supabase
+        .from('buckets')
+        .select('*')
+        .eq('is_active', true)
+        .order('sort_order', { ascending: true })
+      if (data) {
+        applyBucketRows(data)
+        setBucketCatalogVersion(v => v + 1)
+      }
+    }
 
     const mergeMemberRow = row => {
       if (!row?.id) return
@@ -190,6 +216,15 @@ export function AppDataProvider({ session, children }) {
           prev.map(n => (String(n.id) === nid ? { ...n, read: true } : n))
         )
       })
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'buckets' }, () => {
+        refreshBuckets()
+      })
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'buckets' }, () => {
+        refreshBuckets()
+      })
+      .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'buckets' }, () => {
+        refreshBuckets()
+      })
       .subscribe()
 
     return () => {
@@ -255,6 +290,7 @@ export function AppDataProvider({ session, children }) {
     openCountByBucket,
     admin,
     adminPanelAccess,
+    bucketCatalogVersion,
   }
 
   return <AppDataContext.Provider value={value}>{children}</AppDataContext.Provider>

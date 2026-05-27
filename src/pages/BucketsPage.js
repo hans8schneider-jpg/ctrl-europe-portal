@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useNavigate } from 'react-router-dom'
 import { cn, getInitials } from '../lib/utils'
-import { bucketBarCls, bucketLeaderRingCls, bucketMemberAvCls, bucketOrganBadgeCls, SPECIAL_BUCKETS } from '../constants/buckets'
+import { bucketBarCls, bucketLeaderRingCls, bucketMemberAvCls, bucketOrganBadgeCls, bucketStatTextCls, SPECIAL_BUCKETS } from '../constants/buckets'
 import { bucketPath } from '../lib/bucketSlug'
 import { getAccessibleBuckets } from '../lib/permissions'
 import { canViewerSeeTask } from '../lib/tasks'
@@ -14,23 +14,6 @@ const MENU_WIDTH = 168
 const MENU_GAP = 4
 const VIEWPORT_PAD = 8
 const HEADER_OFFSET = 58
-
-const BUCKET_STAT_TEXT = {
-  'PR a komunikace': 'text-[#2A6BFF]',
-  'Sociální sítě': 'text-[#ffb800]',
-  'Podcast': 'text-[#b44fff]',
-  'Research': 'text-[#00c9ff]',
-  'Grafika': 'text-[#ff6b35]',
-  'Video': 'text-[#ff3366]',
-  'Mezinárodní': 'text-[#00e5a0]',
-  'Eventy': 'text-[#00e5a0]',
-  'TikTok': 'text-[#25f4ee]',
-  'Developeři': 'text-[#00d4ff]',
-  'Rada zástupců': 'text-[#ffb800]',
-  'Předsednictvo': 'text-[#b44fff]',
-}
-
-const bucketStatTextCls = (bucket) => BUCKET_STAT_TEXT[bucket] || 'text-ctrl-accent'
 
 const isBucketLeader = (member, bucket) =>
   member.layer === 'vedouci' && member.bucket === bucket
