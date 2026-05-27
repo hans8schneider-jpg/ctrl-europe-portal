@@ -1,9 +1,9 @@
 export const TEAM_BUCKETS = [
   'PR a komunikace', 'Sociální sítě', 'Podcast', 'Research',
-  'Grafika', 'Video', 'Mezinárodní', 'Eventy', 'TikTok', 'Developeři',
+  'Grafika', 'Video', 'Mezinárodní', 'Eventy', 'TikTok',
 ]
 
-export const SPECIAL_BUCKETS = ['Rada zástupců', 'Předsednictvo']
+export const SPECIAL_BUCKETS = ['Rada zástupců', 'Předsednictvo', 'Developeři']
 
 export const ALL_BUCKETS = [...TEAM_BUCKETS, ...SPECIAL_BUCKETS]
 
