@@ -152,7 +152,6 @@ export function Tasks({
   const [activeTab, setActiveTab] = useState('open')
   const [newTask, setNewTask] = useState(emptyTask)
   const [selectedTask, setSelectedTask] = useState(null)
-  const canAdd = canAddTasks(profile.layer)
   const admin = isAdmin(profile.layer)
 
   const bucketScope = admin
@@ -160,6 +159,8 @@ export function Tasks({
       ? activeBucket
       : null
     : activeBucket || profile.bucket
+
+  const canAdd = canAddTasks(profile.layer, bucketScope || activeBucket)
 
   const visibleTasks = filterTasksForViewer(tasks, profile, {
     bucket: bucketScope,

@@ -16,7 +16,14 @@ export const getTeamBucketBadgeDisplay = (memberLayer, bucket) => {
   return { label: bucket, className: bucketOrganBadgeCls(bucket) }
 }
 
-export const canAddTasks = (role) => ['admin', 'vedouci'].includes(role)
+export const DEVELOPERS_BUCKET = 'Developeři'
+
+/** Admin a vedoucí všude; developer jen v buňce Developeři */
+export const canAddTasks = (layer, bucket = null) => {
+  if (['admin', 'vedouci'].includes(layer)) return true
+  if (layer === 'developer' && bucket === DEVELOPERS_BUCKET) return true
+  return false
+}
 export const canSeeAllBuckets = (role) => role === 'admin'
 export const canObserveAll = (role) => ['admin', 'pozorovatel'].includes(role)
 export const isAdmin = (role) => role === 'admin'

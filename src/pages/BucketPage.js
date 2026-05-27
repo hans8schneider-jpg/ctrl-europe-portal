@@ -3,7 +3,7 @@ import { useParams, Navigate, useSearchParams } from 'react-router-dom'
 import { cn } from '../lib/utils'
 import { bucketBarCls } from '../constants/buckets'
 import { slugToBucket } from '../lib/bucketSlug'
-import { getAccessibleBuckets } from '../lib/permissions'
+import { DEVELOPERS_BUCKET, getAccessibleBuckets } from '../lib/permissions'
 import { BucketMemberStrip } from '../components/BucketMemberStrip'
 import { MemberModal } from '../components/MemberModal'
 import { Tasks } from '../components/Tasks'
@@ -29,7 +29,11 @@ export function BucketPage() {
 
   if (!bucket) return <Navigate to="/bunky" replace />
 
-  const bucketMembers = members.filter(m => m.bucket === bucket || m.secondary_bucket === bucket)
+  const bucketMembers = members.filter(m =>
+    bucket === DEVELOPERS_BUCKET
+      ? m.layer === 'developer' || m.bucket === bucket || m.secondary_bucket === bucket
+      : m.bucket === bucket || m.secondary_bucket === bucket
+  )
   return (
     <div className="animate-fade-in">
       <div className="flex items-start gap-3.5 mb-5">

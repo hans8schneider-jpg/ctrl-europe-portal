@@ -10,7 +10,13 @@ import {
   SPECIAL_BUCKETS,
 } from '../constants/buckets'
 import { ROLE_LABELS, roleBadgeCls } from '../constants/roles'
-import { canAccessAdminPanel, canAddTasks, canManageNews, isAdmin } from '../lib/permissions'
+import {
+  canAccessAdminPanel,
+  canAddTasks,
+  canManageNews,
+  isAdmin,
+  isDeveloper,
+} from '../lib/permissions'
 import { Sec } from '../components/ui/Sec'
 import { StatusPicker } from '../components/ui/StatusPicker'
 import { StatusBadge } from '../components/StatusBadge'
@@ -64,6 +70,7 @@ export function ProfilePage() {
         profile.layer !== 'pozorovatel' && 'Chat v buňce',
         profile.layer !== 'pozorovatel' && 'Označování úkolů',
         canAddTasks(profile.layer) && 'Přidávání úkolů',
+        isDeveloper(profile.layer) && 'Přidávání úkolů v buňce Developeři',
         isAdmin(profile.layer) && 'Admin panel',
         canAccessAdminPanel(profile.layer) &&
           !isAdmin(profile.layer) &&

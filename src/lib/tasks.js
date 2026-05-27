@@ -1,4 +1,4 @@
-import { canAddTasks, isAdmin } from './permissions'
+import { DEVELOPERS_BUCKET, canAddTasks, isAdmin } from './permissions'
 
 export const PRIORITY_LABELS = {
   low: 'Nízká',
@@ -23,13 +23,21 @@ export function getMyAssignedOpenTasks(tasks, profile) {
     })
 }
 
-export const canManageTasks = (layer) => canAddTasks(layer)
+export const canManageTasks = (layer, bucket = null) => canAddTasks(layer, bucket)
 
 const isBucketLeader = (member, bucket) =>
   member.layer === 'vedouci' && member.bucket === bucket
 
 export function getBucketMembers(members, bucket) {
   if (!bucket || bucket === 'all') return members || []
+  if (bucket === DEVELOPERS_BUCKET) {
+    return (members || []).filter(
+      m =>
+        m.layer === 'developer' ||
+        m.bucket === bucket ||
+        m.secondary_bucket === bucket
+    )
+  }
   return (members || []).filter(
     m => m.bucket === bucket || m.secondary_bucket === bucket
   )
@@ -83,6 +91,7 @@ export function canViewerSeeTask(task, viewer) {
   if (isAdmin(viewer.layer)) return true
   if (isTaskAssignee(task, viewer)) return true
   if (isVedouciOfBucket(viewer, task.bucket_target)) return true
+  if (viewer.layer === 'developer' && task.bucket_target === DEVELOPERS_BUCKET) return true
   return false
 }
 
