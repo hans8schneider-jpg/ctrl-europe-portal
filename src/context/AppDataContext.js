@@ -10,6 +10,17 @@ import {
 } from '../lib/notifications'
 
 const AppDataContext = createContext(null)
+const LAST_SEEN_INTERVAL_MS = 5 * 60 * 1000
+
+function readLastSeenTouchTs(storageKey) {
+  try {
+    const raw = localStorage.getItem(storageKey)
+    const parsed = raw ? Number(raw) : 0
+    return Number.isFinite(parsed) ? parsed : 0
+  } catch {
+    return 0
+  }
+}
 
 export function AppDataProvider({ session, children }) {
   const [profile, setProfile] = useState(null)
@@ -23,12 +34,43 @@ export function AppDataProvider({ session, children }) {
 
   const touchLastSeen = useCallback(async () => {
     if (!session?.user?.id) return
+    if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return
+    const storageKey = `ctrl:last-seen-touch:${session.user.id}`
+    const lastTouchTs = readLastSeenTouchTs(storageKey)
+    const nowTs = Date.now()
+    if (lastTouchTs && nowTs - lastTouchTs < LAST_SEEN_INTERVAL_MS) return
+
     const now = new Date().toISOString()
-    await supabase.from('profiles').update({ last_seen: now }).eq('id', session.user.id)
+    const { error } = await supabase.from('profiles').update({ last_seen: now }).eq('id', session.user.id)
+    if (error) return
+    try {
+      localStorage.setItem(storageKey, String(nowTs))
+    } catch {}
+
     const userId = session.user.id
     setProfile(prev => (prev && String(prev.id) === String(userId) ? { ...prev, last_seen: now } : prev))
     setMembers(prev => prev.map(m => (String(m.id) === String(userId) ? { ...m, last_seen: now } : m)))
   }, [session])
+
+  useEffect(() => {
+    if (!session?.user?.id) return
+
+    touchLastSeen()
+
+    const heartbeat = setInterval(() => {
+      touchLastSeen()
+    }, LAST_SEEN_INTERVAL_MS)
+
+    const onVisibilityChange = () => {
+      if (document.visibilityState === 'visible') touchLastSeen()
+    }
+    document.addEventListener('visibilitychange', onVisibilityChange)
+
+    return () => {
+      clearInterval(heartbeat)
+      document.removeEventListener('visibilitychange', onVisibilityChange)
+    }
+  }, [session?.user?.id, touchLastSeen])
 
   const loadNotifications = useCallback(async (userId, currentProfile) => {
     if (!userId || !currentProfile) return

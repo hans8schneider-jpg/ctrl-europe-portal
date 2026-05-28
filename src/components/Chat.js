@@ -33,7 +33,7 @@ function canEditMessage(msg) {
 }
 
 export function Chat({ profile, activeBucket }) {
-  const { members, touchLastSeen, tasks } = useAppData()
+  const { members, tasks } = useAppData()
   const [selectedMember, setSelectedMember] = useState(null)
 
   const [messages, setMessages] = useState([])
@@ -217,7 +217,6 @@ export function Chat({ profile, activeBucket }) {
         pinned: false,
       }])
       if (error) throw error
-      touchLastSeen()
       setInput('')
       setPendingFiles([])
     } catch (e) {
