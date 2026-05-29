@@ -12,6 +12,7 @@ import {
   canViewerSeeTask,
   filterTasksForViewer,
   getBucketMembers,
+  normalizeTaskTag,
   resolveAssigneeName,
   sortBucketMembers,
 } from '../lib/tasks'
@@ -23,22 +24,14 @@ const emptyTask = {
   description: '',
   assignee_id: '',
   due: '',
-  tag: 'other',
+  tag: '',
   priority: 'normal',
-}
-
-const TAG_LABELS = {
-  other: 'Obecné',
-  podcast: 'Podcast',
-  research: 'Research',
-  social: 'Social',
-  event: 'Event',
 }
 
 function TaskRow({ task, isDoneTab, canToggle, members, onSelect, onToggle }) {
   const completor = members?.find(m => m.id === task.completed_by)
   const assigneeName = resolveAssigneeName(task, members)
-  const tagLabel = TAG_LABELS[task.tag] || task.tag
+  const tagLabel = normalizeTaskTag(task.tag)
   const priorityLabel = PRIORITY_LABELS[task.priority] || PRIORITY_LABELS.normal
 
   return (
@@ -133,7 +126,9 @@ function TaskRow({ task, isDoneTab, canToggle, members, onSelect, onToggle }) {
         {task.priority && task.priority !== 'normal' && (
           <span className={priorityCls[task.priority] || priorityCls.normal}>{priorityLabel}</span>
         )}
-        <span className={tagCls[task.tag] || tagCls.other}>{tagLabel}</span>
+        {tagLabel && (
+          <span className={tagCls[task.tag] || tagCls.other}>{tagLabel}</span>
+        )}
       </div>
     </div>
   )
@@ -224,9 +219,10 @@ export function Tasks({
     if (!newTask.name.trim()) return
     const bucket_target = activeBucket || profile.bucket
     if (!bucket_target) return
-    const { assignee_id, assignee, priority, ...rest } = newTask
+    const { assignee_id, assignee, priority, tag, ...rest } = newTask
     const { data } = await supabase.from('tasks').insert([{
       ...rest,
+      tag: normalizeTaskTag(tag),
       description: newTask.description.trim() || null,
       bucket_target,
       created_by: profile.id,
@@ -290,13 +286,12 @@ export function Tasks({
             rows={3}
           />
           <div className="flex gap-2.5 mb-2.5 flex-wrap">
-            <select className="bg-ctrl-bg2 border border-ctrl-border text-ctrl-text2 py-[9px] px-3 text-xs font-sans outline-none cursor-pointer transition-colors duration-200 focus:border-ctrl-accent" value={newTask.tag} onChange={e => setNewTask(p => ({ ...p, tag: e.target.value }))}>
-              <option value="other">Obecné</option>
-              <option value="podcast">Podcast</option>
-              <option value="research">Research</option>
-              <option value="social">Social</option>
-              <option value="event">Event</option>
-            </select>
+            <input
+              className="flex-1 min-w-[120px] max-w-[200px] bg-ctrl-bg2 border border-ctrl-border text-ctrl-text py-[9px] px-3 text-[13px] font-sans outline-none transition-all duration-200 focus:border-ctrl-accent focus:shadow-[0_0_0_2px_rgba(42,107,255,0.1)]"
+              placeholder="Štítek (volitelné)…"
+              value={newTask.tag}
+              onChange={e => setNewTask(p => ({ ...p, tag: e.target.value }))}
+            />
             <select className="bg-ctrl-bg2 border border-ctrl-border text-ctrl-text2 py-[9px] px-3 text-xs font-sans outline-none cursor-pointer transition-colors duration-200 focus:border-ctrl-accent" value={newTask.priority} onChange={e => setNewTask(p => ({ ...p, priority: e.target.value }))}>
               {PRIORITY_OPTIONS.map(p => (
                 <option key={p} value={p}>{PRIORITY_LABELS[p]}</option>

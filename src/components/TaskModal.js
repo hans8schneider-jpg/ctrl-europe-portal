@@ -10,17 +10,10 @@ import {
   assigneePayload,
   canManageTasks,
   getBucketMembers,
+  normalizeTaskTag,
   resolveAssigneeName,
   sortBucketMembers,
 } from '../lib/tasks'
-
-const TAG_LABELS = {
-  other: 'Obecné',
-  podcast: 'Podcast',
-  research: 'Research',
-  social: 'Social',
-  event: 'Event',
-}
 
 function DetailRow({ label, children }) {
   if (children == null || children === '') return null
@@ -119,7 +112,7 @@ export function TaskModal({
   const creator = members?.find(m => m.id === task.created_by)
   const completor = members?.find(m => m.id === task.completed_by)
   const assigneeName = resolveAssigneeName(task, members)
-  const tagLabel = TAG_LABELS[task.tag] || task.tag
+  const tagLabel = normalizeTaskTag(task.tag)
   const priorityLabel = PRIORITY_LABELS[task.priority] || PRIORITY_LABELS.normal
 
   const createdLabel = task.created_at
@@ -218,7 +211,9 @@ export function TaskModal({
                   {priorityLabel}
                 </span>
               )}
-              <span className={tagCls[task.tag] || tagCls.other}>{tagLabel}</span>
+              {tagLabel && (
+                <span className={tagCls[task.tag] || tagCls.other}>{tagLabel}</span>
+              )}
             </div>
             <h2
               className={cn(

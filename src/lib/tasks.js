@@ -107,6 +107,14 @@ export function getTaskBucket(task, fallbackBucket) {
   return fallbackBucket || null
 }
 
+/** Volný štítek — prázdný / „other“ se neukazuje. */
+export function normalizeTaskTag(tag) {
+  if (tag == null) return null
+  const t = String(tag).trim()
+  if (!t || t === 'other') return null
+  return t
+}
+
 export function filterTasksForViewer(tasks, viewer, options = {}) {
   const { bucket, includeAll = true } = options
   const scoped = bucket ? filterTasksInBucket(tasks, bucket, { includeAll }) : tasks || []

@@ -7,20 +7,13 @@ import {
   PRIORITY_LABELS,
   getMyAssignedOpenTasks,
   getTaskBucket,
+  normalizeTaskTag,
 } from '../lib/tasks'
 import { tagCls, priorityCls } from '../constants/styles'
 import { useAppData } from '../context/AppDataContext'
 
-const TAG_LABELS = {
-  other: 'Obecné',
-  podcast: 'Podcast',
-  research: 'Research',
-  social: 'Social',
-  event: 'Event',
-}
-
 function MyTaskRow({ task, profile, onOpen }) {
-  const tagLabel = TAG_LABELS[task.tag] || task.tag
+  const tagLabel = normalizeTaskTag(task.tag)
   const priorityLabel = PRIORITY_LABELS[task.priority] || PRIORITY_LABELS.normal
   const bucket = getTaskBucket(task, profile.bucket)
 
@@ -69,7 +62,9 @@ function MyTaskRow({ task, profile, onOpen }) {
         {task.priority && task.priority !== 'normal' && (
           <span className={priorityCls[task.priority] || priorityCls.normal}>{priorityLabel}</span>
         )}
-        <span className={tagCls[task.tag] || tagCls.other}>{tagLabel}</span>
+        {tagLabel && (
+          <span className={tagCls[task.tag] || tagCls.other}>{tagLabel}</span>
+        )}
       </div>
     </div>
   )
