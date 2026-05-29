@@ -1,16 +1,16 @@
 import { useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { cn } from '../lib/utils'
-import { TEAM_BUCKETS, SPECIAL_BUCKETS } from '../constants/buckets'
 import { bucketDotCls } from '../constants/buckets'
 import { bucketPath } from '../lib/bucketSlug'
+import { getSidebarBucketSections } from '../lib/permissions'
 import { getMyAssignedOpenTasks } from '../lib/tasks'
 import { useAppData } from '../context/AppDataContext'
 import { ReportModal } from './ReportModal'
 import { MyTasksNav } from './MyTasksNav'
 import { IconAdmin, IconCells, IconDashboard, IconMenu, IconProfile, IconReport, IconTasks } from './icons/NavIcons'
 
-export function MobileBottomNav({ accessibleBuckets, activeBucketSlug }) {
+export function MobileBottomNav({ activeBucketSlug }) {
   const navigate = useNavigate()
   const location = useLocation()
   const { profile, tasks, openCountByBucket, adminPanelAccess } = useAppData()
@@ -35,8 +35,27 @@ export function MobileBottomNav({ accessibleBuckets, activeBucketSlug }) {
     return path.startsWith(itemPath)
   }
 
-  const teamBuckets = accessibleBuckets.filter(b => TEAM_BUCKETS.includes(b))
-  const specialBuckets = accessibleBuckets.filter(b => SPECIAL_BUCKETS.includes(b))
+  const { team: teamBuckets, organs: specialBuckets, others: otherBuckets } =
+    getSidebarBucketSections(profile)
+
+  const renderBucketDrawerItem = (b) => {
+    const bucketOpenCount = openCountByBucket[b] || 0
+    return (
+      <div
+        key={b}
+        className="relative flex items-center gap-3 py-3.5 px-3 cursor-pointer rounded-lg transition-colors duration-150 mb-0.5 active:bg-[rgba(42,107,255,0.1)]"
+        onClick={() => { navigate(bucketPath(b)); setDrawerOpen(false) }}
+      >
+        <div className={cn('w-2.5 h-2.5 rounded-sm shrink-0', bucketDotCls(b))} />
+        <span className="text-[15px] font-semibold">{b}</span>
+        {bucketOpenCount > 0 && (
+          <span className="ml-auto bg-ctrl-danger text-white text-[9px] min-w-4 h-4 flex items-center justify-center rounded-lg font-mono animate-badge-pop">
+            {bucketOpenCount > 9 ? '9+' : bucketOpenCount}
+          </span>
+        )}
+      </div>
+    )
+  }
 
   return (
     <>
@@ -75,38 +94,22 @@ export function MobileBottomNav({ accessibleBuckets, activeBucketSlug }) {
       <div className={cn('fixed inset-0 z-[400] backdrop-blur-sm bg-[rgba(0,0,0,0.75)]', drawerOpen ? 'flex items-end animate-fade-in' : 'hidden')} onClick={() => setDrawerOpen(false)}>
         <div className="bg-ctrl-panel border-t border-ctrl-border w-full max-h-[78vh] overflow-y-auto px-4 pt-4 pb-8 rounded-t-2xl animate-slide-up" onClick={e => e.stopPropagation()}>
           <div className="w-9 h-1 bg-ctrl-border2 rounded-sm mx-auto mb-4" />
-          <div className="font-mono text-[9px] tracking-[3px] text-ctrl-text3 uppercase py-3 px-3 pb-1">Týmové buňky</div>
-          {teamBuckets.map(b => {
-            const bucketOpenCount = openCountByBucket[b] || 0
-            return (
-              <div key={b} className="relative flex items-center gap-3 py-3.5 px-3 cursor-pointer rounded-lg transition-colors duration-150 mb-0.5 active:bg-[rgba(42,107,255,0.1)]" onClick={() => { navigate(bucketPath(b)); setDrawerOpen(false) }}>
-                <div className={cn('w-2.5 h-2.5 rounded-sm shrink-0', bucketDotCls(b))} />
-                <span className="text-[15px] font-semibold">{b}</span>
-                {bucketOpenCount > 0 && (
-                  <span className="ml-auto bg-ctrl-danger text-white text-[9px] min-w-4 h-4 flex items-center justify-center rounded-lg font-mono animate-badge-pop">
-                    {bucketOpenCount > 9 ? '9+' : bucketOpenCount}
-                  </span>
-                )}
-              </div>
-            )
-          })}
+          {teamBuckets.length > 0 && (
+            <>
+              <div className="font-mono text-[9px] tracking-[3px] text-ctrl-text3 uppercase py-3 px-3 pb-1">Týmové buňky</div>
+              {teamBuckets.map(renderBucketDrawerItem)}
+            </>
+          )}
           {specialBuckets.length > 0 && (
             <>
               <div className="font-mono text-[9px] tracking-[3px] text-ctrl-text3 uppercase py-3 px-3 pb-1">Orgány</div>
-              {specialBuckets.map(b => {
-                const bucketOpenCount = openCountByBucket[b] || 0
-                return (
-                  <div key={b} className="relative flex items-center gap-3 py-3.5 px-3 cursor-pointer rounded-lg transition-colors duration-150 mb-0.5 active:bg-[rgba(42,107,255,0.1)]" onClick={() => { navigate(bucketPath(b)); setDrawerOpen(false) }}>
-                    <div className={cn('w-2.5 h-2.5 rounded-sm shrink-0', bucketDotCls(b))} />
-                    <span className="text-[15px] font-semibold">{b}</span>
-                    {bucketOpenCount > 0 && (
-                      <span className="ml-auto bg-ctrl-danger text-white text-[9px] min-w-4 h-4 flex items-center justify-center rounded-lg font-mono animate-badge-pop">
-                        {bucketOpenCount > 9 ? '9+' : bucketOpenCount}
-                      </span>
-                    )}
-                  </div>
-                )
-              })}
+              {specialBuckets.map(renderBucketDrawerItem)}
+            </>
+          )}
+          {otherBuckets.length > 0 && (
+            <>
+              <div className="font-mono text-[9px] tracking-[3px] text-ctrl-text3 uppercase py-3 px-3 pb-1">Ostatní</div>
+              {otherBuckets.map(renderBucketDrawerItem)}
             </>
           )}
           <div className="font-mono text-[9px] tracking-[3px] text-ctrl-text3 uppercase py-3 px-3 pb-1 mt-1 border-t border-ctrl-border">Portál</div>

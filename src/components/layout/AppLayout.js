@@ -2,10 +2,9 @@ import { useEffect, useRef, useState } from 'react'
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { supabase } from '../../supabase'
 import { cn, getInitials } from '../../lib/utils'
-import { TEAM_BUCKETS, SPECIAL_BUCKETS } from '../../constants/buckets'
 import { bucketDotCls, bucketMemberAvCls } from '../../constants/buckets'
 import { bucketPath, bucketToSlug } from '../../lib/bucketSlug'
-import { getAccessibleBuckets, isAdmin } from '../../lib/permissions'
+import { getBrowsableBuckets, getSidebarBucketSections, isAdmin } from '../../lib/permissions'
 import { ROLE_LABELS, roleBadgeCls } from '../../constants/roles'
 import { getStatusMeta } from '../../constants/status'
 import { useAppData } from '../../context/AppDataContext'
@@ -74,15 +73,37 @@ export function AppLayout() {
     }
   }, [profileMenuOpen])
 
-  const accessibleBuckets = getAccessibleBuckets(profile)
-  const teamBuckets = accessibleBuckets.filter(b => TEAM_BUCKETS.includes(b))
-  const specialBuckets = accessibleBuckets.filter(b => SPECIAL_BUCKETS.includes(b))
+  const browsableBuckets = getBrowsableBuckets(profile)
+  const { team: teamBuckets, organs: specialBuckets, others: otherBuckets } =
+    getSidebarBucketSections(profile)
 
   const bucketMatch = location.pathname.match(/^\/bunka\/([^/]+)/)
   const activeBucketSlug = bucketMatch?.[1] ?? null
   const activeBucket = activeBucketSlug
-    ? accessibleBuckets.find(b => bucketToSlug(b) === activeBucketSlug) ?? null
+    ? browsableBuckets.find(b => bucketToSlug(b) === activeBucketSlug) ?? null
     : null
+
+  const renderBucketNavItem = (b) => {
+    const bucketOpenCount = openCountByBucket[b] || 0
+    return (
+      <div
+        key={b}
+        className={bucketLinkCls(bucketToSlug(b))}
+        onClick={() => navigate(bucketPath(b))}
+        role="link"
+        tabIndex={0}
+        onKeyDown={e => e.key === 'Enter' && navigate(bucketPath(b))}
+      >
+        <div className={cn('w-1.5 h-1.5 shrink-0', bucketDotCls(b))} />
+        <span className="text-[11px]">{b}</span>
+        {bucketOpenCount > 0 && (
+          <span className="absolute right-3.5 top-1/2 -translate-y-1/2 bg-ctrl-danger text-white text-[9px] min-w-4 h-4 flex items-center justify-center rounded-lg font-mono animate-badge-pop">
+            {bucketOpenCount > 9 ? '9+' : bucketOpenCount}
+          </span>
+        )}
+      </div>
+    )
+  }
 
   const headerTitle = activeBucket || PAGE_TITLES[location.pathname] || ''
 
@@ -133,40 +154,21 @@ export function AppLayout() {
           {teamBuckets.length > 0 && (
             <>
               <div className="py-2.5 px-5 pb-1 font-mono text-[8px] tracking-[3px] text-ctrl-text3 uppercase">Týmové buňky</div>
-              {teamBuckets.map(b => {
-                const bucketOpenCount = openCountByBucket[b] || 0
-                return (
-                  <div key={b} className={bucketLinkCls(bucketToSlug(b))} onClick={() => navigate(bucketPath(b))} role="link" tabIndex={0} onKeyDown={e => e.key === 'Enter' && navigate(bucketPath(b))}>
-                    <div className={cn('w-1.5 h-1.5 shrink-0', bucketDotCls(b))} />
-                    <span className="text-[11px]">{b}</span>
-                    {bucketOpenCount > 0 && (
-                      <span className="absolute right-3.5 top-1/2 -translate-y-1/2 bg-ctrl-danger text-white text-[9px] min-w-4 h-4 flex items-center justify-center rounded-lg font-mono animate-badge-pop">
-                        {bucketOpenCount > 9 ? '9+' : bucketOpenCount}
-                      </span>
-                    )}
-                  </div>
-                )
-              })}
+              {teamBuckets.map(renderBucketNavItem)}
             </>
           )}
 
           {specialBuckets.length > 0 && (
             <>
               <div className="py-2.5 px-5 pb-1 font-mono text-[8px] tracking-[3px] text-ctrl-text3 uppercase">Orgány</div>
-              {specialBuckets.map(b => {
-                const bucketOpenCount = openCountByBucket[b] || 0
-                return (
-                  <div key={b} className={bucketLinkCls(bucketToSlug(b))} onClick={() => navigate(bucketPath(b))} role="link" tabIndex={0} onKeyDown={e => e.key === 'Enter' && navigate(bucketPath(b))}>
-                    <div className={cn('w-1.5 h-1.5 shrink-0', bucketDotCls(b))} />
-                    <span className="text-[11px]">{b}</span>
-                    {bucketOpenCount > 0 && (
-                      <span className="absolute right-3.5 top-1/2 -translate-y-1/2 bg-ctrl-danger text-white text-[9px] min-w-4 h-4 flex items-center justify-center rounded-lg font-mono animate-badge-pop">
-                        {bucketOpenCount > 9 ? '9+' : bucketOpenCount}
-                      </span>
-                    )}
-                  </div>
-                )
-              })}
+              {specialBuckets.map(renderBucketNavItem)}
+            </>
+          )}
+
+          {otherBuckets.length > 0 && (
+            <>
+              <div className="py-2.5 px-5 pb-1 font-mono text-[8px] tracking-[3px] text-ctrl-text3 uppercase">Ostatní</div>
+              {otherBuckets.map(renderBucketNavItem)}
             </>
           )}
         </nav>
@@ -277,7 +279,6 @@ export function AppLayout() {
       </div>
 
       <MobileBottomNav
-        accessibleBuckets={accessibleBuckets}
         activeBucketSlug={activeBucketSlug}
       />
 

@@ -100,3 +100,25 @@ export const getAccessibleBuckets = (profile) => {
   if (layer === 'predsednictvo' || layer === 'zastupce_predsednictva') buckets.push('Předsednictvo')
   return [...new Set(buckets)]
 }
+
+/** Buňky, které může uživatel otevřít (navigace, stránka buňky). */
+export const getBrowsableBuckets = (profile) => {
+  if (!profile) return []
+  if (profile.layer === 'admin') return ALL_BUCKETS
+  if (profile.layer === 'developer') {
+    return [...new Set([...TEAM_BUCKETS, ...getAccessibleBuckets(profile)])]
+  }
+  return getAccessibleBuckets(profile)
+}
+
+/** Sekce sidebaru: vlastní týmové buňky, orgány, ostatní týmové buňky (developer). */
+export const getSidebarBucketSections = (profile) => {
+  const accessible = getAccessibleBuckets(profile)
+  const team = accessible.filter(b => TEAM_BUCKETS.includes(b))
+  const organs = accessible.filter(b => SPECIAL_BUCKETS.includes(b))
+  const others =
+    profile?.layer === 'developer'
+      ? TEAM_BUCKETS.filter(b => !team.includes(b))
+      : []
+  return { team, organs, others }
+}

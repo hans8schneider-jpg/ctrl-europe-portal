@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import { cn, getInitials } from '../lib/utils'
 import { bucketBarCls, bucketLeaderRingCls, bucketMemberAvCls, bucketOrganBadgeCls, bucketStatTextCls, SPECIAL_BUCKETS } from '../constants/buckets'
 import { bucketPath } from '../lib/bucketSlug'
-import { getAccessibleBuckets } from '../lib/permissions'
+import { getSidebarBucketSections } from '../lib/permissions'
 import { canViewerSeeTask } from '../lib/tasks'
 import { Sec } from '../components/ui/Sec'
 import { MemberModal } from '../components/MemberModal'
@@ -50,7 +50,12 @@ function computeMenuLayout(anchor) {
 export function BucketsPage() {
   const navigate = useNavigate()
   const { profile, tasks, members } = useAppData()
-  const accessible = getAccessibleBuckets(profile)
+  const { team, organs, others } = getSidebarBucketSections(profile)
+  const bucketSections = [
+    { key: 'team', label: 'Týmové buňky', buckets: team },
+    { key: 'organs', label: 'Orgány', buckets: organs },
+    { key: 'others', label: 'Ostatní', buckets: others },
+  ].filter(s => s.buckets.length > 0)
   const [selectedMember, setSelectedMember] = useState(null)
   const [openMenuBucket, setOpenMenuBucket] = useState(null)
   const [menuLayout, setMenuLayout] = useState(null)
@@ -117,8 +122,15 @@ export function BucketsPage() {
   return (
     <div className="animate-fade-in">
       <Sec>BUŇKY PROJEKTU</Sec>
-      <div className="grid grid-cols-3 gap-3 mb-5 max-[900px]:grid-cols-2 max-[900px]:gap-2">
-        {accessible.map(bucket => {
+      {bucketSections.map(section => (
+        <div key={section.key} className="mb-6 last:mb-5">
+          {bucketSections.length > 1 && (
+            <div className="font-mono text-[9px] tracking-[3px] text-ctrl-text3 uppercase mb-3">
+              {section.label}
+            </div>
+          )}
+          <div className="grid grid-cols-3 gap-3 max-[900px]:grid-cols-2 max-[900px]:gap-2">
+        {section.buckets.map(bucket => {
           const bucketTasks = tasks.filter(
             t =>
               (t.bucket_target === bucket || t.bucket_target === 'all') &&
@@ -187,7 +199,9 @@ export function BucketsPage() {
             </div>
           )
         })}
-      </div>
+          </div>
+        </div>
+      ))}
 
       {openMenuBucket && menuLayout && createPortal(
         <div

@@ -3,7 +3,7 @@ import { useParams, Navigate, useSearchParams } from 'react-router-dom'
 import { cn } from '../lib/utils'
 import { bucketBarCls } from '../constants/buckets'
 import { slugToBucket } from '../lib/bucketSlug'
-import { DEVELOPERS_BUCKET, getAccessibleBuckets } from '../lib/permissions'
+import { DEVELOPERS_BUCKET, getBrowsableBuckets } from '../lib/permissions'
 import { BucketMemberStrip } from '../components/BucketMemberStrip'
 import { MemberModal } from '../components/MemberModal'
 import { Tasks } from '../components/Tasks'
@@ -14,8 +14,8 @@ export function BucketPage() {
   const { slug } = useParams()
   const [searchParams, setSearchParams] = useSearchParams()
   const { profile, tasks, setTasks, members } = useAppData()
-  const accessible = getAccessibleBuckets(profile)
-  const bucket = slugToBucket(slug, accessible)
+  const browsable = getBrowsableBuckets(profile)
+  const bucket = slugToBucket(slug, browsable)
   const highlightTaskId = searchParams.get('task')
   const [view, setView] = useState('tasks')
   const [selectedMember, setSelectedMember] = useState(null)
