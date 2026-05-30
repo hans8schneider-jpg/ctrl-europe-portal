@@ -326,12 +326,13 @@ export function Chat({ profile, activeBucket }) {
 
       <div className="flex-1 overflow-y-auto flex flex-col gap-3 pb-3">
 
-        {messages.map(m => {
+        {messages.map((m, idx) => {
           void presenceTick
 
           const isOwn = String(m.author_id).toLowerCase() === String(profile.id).toLowerCase()
           const editable = isOwn && canEditMessage(m)
           const { status, isOnline } = getAuthorPresence(m.author_id)
+          const dropdownOpensDown = idx < 3
 
           return (
 
@@ -410,7 +411,7 @@ export function Chat({ profile, activeBucket }) {
 
                     {openMenuId === m.id && (
 
-                      <div className="absolute bottom-full right-0 mb-0.5 z-20 min-w-[120px] bg-ctrl-panel2 border border-ctrl-border shadow-[0_8px_24px_rgba(0,0,0,0.5)]">
+                      <div className={cn("absolute right-0 z-20 min-w-[120px] bg-ctrl-panel2 border border-ctrl-border shadow-[0_8px_24px_rgba(0,0,0,0.5)]", dropdownOpensDown ? "top-full mt-0.5" : "bottom-full mb-0.5")}>
 
                         <button
                           type="button"
