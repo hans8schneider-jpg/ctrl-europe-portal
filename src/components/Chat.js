@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 
 import { supabase } from '../supabase'
 
@@ -19,6 +19,7 @@ import {
   uploadChatAttachments,
   validateChatAttachment,
 } from '../lib/chatAttachments'
+import { createNotification, buildMentionNotification } from '../lib/notifications'
 
 const MESSAGE_EDIT_WINDOW_MS = 10 * 60 * 1000
 
@@ -29,6 +30,24 @@ function canEditMessage(msg) {
   return candidates.some(t => {
     const elapsed = now - t
     return elapsed >= 0 && elapsed < MESSAGE_EDIT_WINDOW_MS
+  })
+}
+
+function renderMentionText(text, memberNameSet) {
+  if (!text) return null
+  const parts = text.split(/(@\S+)/g)
+  return parts.map((part, i) => {
+    if (/^@\S+$/.test(part)) {
+      const key = part.slice(1).toLowerCase()
+      if (key === 'všichni' || memberNameSet.has(key)) {
+        return (
+          <span key={i} className="text-ctrl-accent font-semibold">
+            {part}
+          </span>
+        )
+      }
+    }
+    return part
   })
 }
 
@@ -55,12 +74,33 @@ export function Chat({ profile, activeBucket }) {
   const [editSaving, setEditSaving] = useState(false)
   const [editError, setEditError] = useState(null)
 
+  const [mentionSearch, setMentionSearch] = useState(null)
+  const [pendingMentions, setPendingMentions] = useState([])
+
   const bottomRef = useRef(null)
   const fileInputRef = useRef(null)
+  const inputRef = useRef(null)
 
   const bucket = activeBucket || profile.bucket
 
   const canWrite = profile.layer !== 'pozorovatel'
+
+  const memberNameSet = useMemo(
+    () => new Set(members.map(m => m.name.replace(/\s/g, '').toLowerCase())),
+    [members]
+  )
+
+  const mentionCandidates = useMemo(() => {
+    if (mentionSearch === null) return []
+    const q = mentionSearch.toLowerCase()
+    const vsichni = { id: '__vsichni__', name: 'všichni' }
+    const matched = members
+      .filter(m => String(m.id) !== String(profile.id))
+      .filter(m => !q || m.name.toLowerCase().includes(q) || m.name.replace(/\s/g, '').toLowerCase().includes(q))
+      .map(m => ({ id: m.id, name: m.name }))
+    const showVsichni = !q || 'všichni'.startsWith(q)
+    return [...(showVsichni ? [vsichni] : []), ...matched].slice(0, 8)
+  }, [mentionSearch, members, profile.id])
 
 
 
@@ -195,6 +235,38 @@ export function Chat({ profile, activeBucket }) {
     setPendingFiles(next)
   }
 
+  const handleInputChange = (e) => {
+    const val = e.target.value
+    setInput(val)
+    setPendingMentions(prev => prev.filter(m => {
+      const tag = '@' + m.name.replace(/\s/g, '')
+      return val.includes(tag)
+    }))
+    const caret = e.target.selectionStart ?? val.length
+    const before = val.slice(0, caret)
+    const atMatch = before.match(/@(\S*)$/)
+    setMentionSearch(atMatch ? atMatch[1] : null)
+  }
+
+  const selectMention = (candidate) => {
+    const tag = '@' + candidate.name.replace(/\s/g, '')
+    const el = inputRef.current
+    const caret = el?.selectionStart ?? input.length
+    const newBefore = input.slice(0, caret).replace(/@(\S*)$/, tag + ' ')
+    const newVal = newBefore + input.slice(caret)
+    setInput(newVal)
+    setMentionSearch(null)
+    if (!pendingMentions.some(m => m.id === candidate.id)) {
+      setPendingMentions(prev => [...prev, candidate])
+    }
+    setTimeout(() => {
+      if (el) {
+        el.focus()
+        el.setSelectionRange(newBefore.length, newBefore.length)
+      }
+    }, 0)
+  }
+
   const sendMessage = async () => {
     if (!canWrite || uploading) return
     const text = input.trim()
@@ -203,6 +275,7 @@ export function Chat({ profile, activeBucket }) {
     setUploading(true)
     setUploadError(null)
     let attachments = []
+    const mentionsSnapshot = [...pendingMentions]
     try {
       if (pendingFiles.length) {
         attachments = await uploadChatAttachments(supabase, bucket, profile.id, pendingFiles)
@@ -219,6 +292,21 @@ export function Chat({ profile, activeBucket }) {
       if (error) throw error
       setInput('')
       setPendingFiles([])
+      setPendingMentions([])
+
+      await Promise.allSettled(
+        mentionsSnapshot.map(m =>
+          createNotification({
+            ...buildMentionNotification({
+              authorName: profile.name,
+              bucket,
+              messageText: text || null,
+              targetUserId: m.id === '__vsichni__' ? null : String(m.id),
+            }),
+            created_by: profile.id,
+          })
+        )
+      )
     } catch (e) {
       if (attachments.length) await removeChatAttachments(supabase, attachments)
       setUploadError(e?.message || 'Nahrání se nezdařilo.')
@@ -507,7 +595,9 @@ export function Chat({ profile, activeBucket }) {
                     </div>
                   </div>
                 ) : m.text ? (
-                  <div className={cn('text-[13px] leading-normal', isOwn ? 'text-ctrl-text pr-5' : 'text-ctrl-text2')}>{m.text}</div>
+                  <div className={cn('text-[13px] leading-normal', isOwn ? 'text-ctrl-text pr-5' : 'text-ctrl-text2')}>
+                    {renderMentionText(m.text, memberNameSet)}
+                  </div>
                 ) : null}
                 <ChatMessageAttachments attachments={m.attachments} isOwn={isOwn} />
 
@@ -562,7 +652,22 @@ export function Chat({ profile, activeBucket }) {
           {uploadError && (
             <div className="text-ctrl-danger text-[11px] font-mono mb-2">{uploadError}</div>
           )}
-          <div className="flex gap-2">
+          <div className="flex gap-2 relative">
+            {mentionCandidates.length > 0 && (
+              <div className="absolute bottom-full left-0 right-0 mb-1 bg-ctrl-panel2 border border-ctrl-border shadow-[0_-4px_16px_rgba(0,0,0,0.4)] z-50 max-h-[200px] overflow-y-auto">
+                {mentionCandidates.map(c => (
+                  <button
+                    key={c.id}
+                    type="button"
+                    className="w-full text-left py-2 px-3 text-[12px] font-mono text-ctrl-text hover:bg-ctrl-panel transition-colors duration-150 flex items-center gap-2"
+                    onMouseDown={e => { e.preventDefault(); selectMention(c) }}
+                  >
+                    <span className="text-ctrl-accent font-bold">@</span>
+                    <span>{c.name}</span>
+                  </button>
+                ))}
+              </div>
+            )}
             <input
               ref={fileInputRef}
               type="file"
@@ -584,12 +689,19 @@ export function Chat({ profile, activeBucket }) {
               📎
             </button>
             <input
+              ref={inputRef}
               className="flex-1 bg-ctrl-panel border border-ctrl-border text-ctrl-text py-3 px-4 text-[13px] font-sans outline-none transition-all duration-200 focus:border-ctrl-accent"
-              placeholder="Napiš zprávu..."
+              placeholder="Napiš zprávu… nebo @jméno pro zmínku"
               value={input}
               disabled={uploading}
-              onChange={e => setInput(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && !e.shiftKey && sendMessage()}
+              onChange={handleInputChange}
+              onKeyDown={e => {
+                if (mentionCandidates.length > 0) {
+                  if (e.key === 'Escape') { e.preventDefault(); setMentionSearch(null); return }
+                  if (e.key === 'Enter') { e.preventDefault(); selectMention(mentionCandidates[0]); return }
+                }
+                if (e.key === 'Enter' && !e.shiftKey) sendMessage()
+              }}
             />
             <button
               type="button"
@@ -624,5 +736,3 @@ export function Chat({ profile, activeBucket }) {
   )
 
 }
-
-

@@ -2,13 +2,17 @@ import { supabase } from '../supabase'
 
 export function notificationVisibleToProfile(notification, profile) {
   if (!profile || !notification) return false
+  // Targeted mention: only visible to the specific user
+  if (notification.user_target) {
+    return String(notification.user_target) === String(profile.id)
+  }
   const target = notification.bucket_target
   if (!target || target === 'all') return true
   const buckets = [profile.bucket, profile.secondary_bucket].filter(Boolean)
   return buckets.includes(target)
 }
 
-export async function createNotification({ type, title, body, bucket_target, ref_id, created_by }) {
+export async function createNotification({ type, title, body, bucket_target, ref_id, created_by, user_target }) {
   const { data, error } = await supabase
     .from('notifications')
     .insert([{
@@ -18,6 +22,7 @@ export async function createNotification({ type, title, body, bucket_target, ref
       bucket_target: bucket_target || null,
       ref_id: ref_id != null ? String(ref_id) : null,
       created_by: created_by || null,
+      user_target: user_target || null,
     }])
     .select()
     .single()
@@ -107,5 +112,18 @@ export function buildEventNotification(event) {
     body: when || event.description || null,
     bucket_target: null,
     ref_id: event.id != null ? String(event.id) : null,
+  }
+}
+
+export function buildMentionNotification({ authorName, bucket, messageText, targetUserId }) {
+  const isAll = !targetUserId
+  return {
+    type: 'mention',
+    title: isAll
+      ? `${authorName}: @všichni v chatu ${bucket}`
+      : `${authorName} tě zmínil/a v chatu`,
+    body: messageText || null,
+    bucket_target: bucket,
+    user_target: targetUserId || null,
   }
 }

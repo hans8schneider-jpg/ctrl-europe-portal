@@ -35,6 +35,7 @@ export function AppLayout() {
   const {
     profile,
     openCountByBucket,
+    mentionCountByBucket,
     notifications,
     markNotificationsAsRead,
     admin,
@@ -85,6 +86,8 @@ export function AppLayout() {
 
   const renderBucketNavItem = (b) => {
     const bucketOpenCount = openCountByBucket[b] || 0
+    const bucketMentionCount = mentionCountByBucket[b] || 0
+    const hasBoth = bucketOpenCount > 0 && bucketMentionCount > 0
     return (
       <div
         key={b}
@@ -96,8 +99,16 @@ export function AppLayout() {
       >
         <div className={cn('w-1.5 h-1.5 shrink-0', bucketDotCls(b))} />
         <span className="text-[11px]">{b}</span>
+        {bucketMentionCount > 0 && (
+          <span className="absolute right-3.5 top-1/2 -translate-y-1/2 bg-ctrl-accent text-white text-[9px] min-w-4 h-4 flex items-center justify-center rounded-lg font-mono animate-badge-pop">
+            @
+          </span>
+        )}
         {bucketOpenCount > 0 && (
-          <span className="absolute right-3.5 top-1/2 -translate-y-1/2 bg-ctrl-danger text-white text-[9px] min-w-4 h-4 flex items-center justify-center rounded-lg font-mono animate-badge-pop">
+          <span className={cn(
+            'absolute top-1/2 -translate-y-1/2 bg-ctrl-danger text-white text-[9px] min-w-4 h-4 flex items-center justify-center rounded-lg font-mono animate-badge-pop',
+            hasBoth ? 'right-10' : 'right-3.5'
+          )}>
             {bucketOpenCount > 9 ? '9+' : bucketOpenCount}
           </span>
         )}

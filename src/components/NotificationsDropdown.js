@@ -9,6 +9,7 @@ import { IconBell } from './icons/NavIcons'
 function notificationPath(notification) {
   switch (notification.type) {
     case 'task':
+    case 'mention':
       return notification.bucket_target ? bucketPath(notification.bucket_target) : '/'
     case 'news':
     case 'event':

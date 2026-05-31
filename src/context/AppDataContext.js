@@ -301,6 +301,15 @@ export function AppDataProvider({ session, children }) {
     [notifications]
   )
 
+  const mentionCountByBucket = useMemo(() => {
+    const counts = {}
+    for (const n of notifications) {
+      if (n.type !== 'mention' || n.read || !n.bucket_target) continue
+      counts[n.bucket_target] = (counts[n.bucket_target] || 0) + 1
+    }
+    return counts
+  }, [notifications])
+
   const patchMember = useCallback((memberId, patch) => {
     setMembers(prev =>
       prev.map(m => (String(m.id) === String(memberId) ? { ...m, ...patch } : m))
@@ -333,6 +342,7 @@ export function AppDataProvider({ session, children }) {
     admin,
     adminPanelAccess,
     bucketCatalogVersion,
+    mentionCountByBucket,
   }
 
   return <AppDataContext.Provider value={value}>{children}</AppDataContext.Provider>
