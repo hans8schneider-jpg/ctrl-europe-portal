@@ -33,15 +33,53 @@ function canEditMessage(msg) {
   })
 }
 
-function renderMentionText(text, memberNameSet) {
+function currentUserMentionKey(name) {
+  return name.replace(/\s/g, '').toLowerCase()
+}
+
+function messageMentionsUser(text, profileName) {
+  if (!text || !profileName) return false
+  const me = currentUserMentionKey(profileName)
+  return text.split(/(@\S+)/g).some(part => {
+    if (!/^@\S+$/.test(part)) return false
+    const key = part.slice(1).toLowerCase()
+    return key === 'všichni' || key === me
+  })
+}
+
+function renderMentionText(text, memberNameSet, profileName, memberByMentionKey, onMemberClick) {
   if (!text) return null
+  const me = profileName ? currentUserMentionKey(profileName) : null
   const parts = text.split(/(@\S+)/g)
   return parts.map((part, i) => {
     if (/^@\S+$/.test(part)) {
       const key = part.slice(1).toLowerCase()
       if (key === 'všichni' || memberNameSet.has(key)) {
+        const mentionsMe = me && (key === 'všichni' || key === me)
+        const mentionCls = cn(
+          'font-semibold',
+          mentionsMe
+            ? 'text-ctrl-warning bg-[rgba(255,184,0,0.22)] px-0.5 rounded-sm'
+            : 'text-ctrl-accent'
+        )
+        const member = key !== 'všichni' ? memberByMentionKey.get(key) : null
+        if (member && onMemberClick) {
+          return (
+            <button
+              key={i}
+              type="button"
+              className={cn(
+                mentionCls,
+                'inline cursor-pointer hover:underline border-0 bg-transparent p-0 font-sans text-[13px] leading-normal align-baseline'
+              )}
+              onClick={() => onMemberClick(member)}
+            >
+              {part}
+            </button>
+          )
+        }
         return (
-          <span key={i} className="text-ctrl-accent font-semibold">
+          <span key={i} className={mentionCls}>
             {part}
           </span>
         )
@@ -89,6 +127,14 @@ export function Chat({ profile, activeBucket }) {
     () => new Set(members.map(m => m.name.replace(/\s/g, '').toLowerCase())),
     [members]
   )
+
+  const memberByMentionKey = useMemo(() => {
+    const map = new Map()
+    for (const m of members) {
+      map.set(m.name.replace(/\s/g, '').toLowerCase(), m)
+    }
+    return map
+  }, [members])
 
   const mentionCandidates = useMemo(() => {
     if (mentionSearch === null) return []
@@ -180,6 +226,10 @@ export function Chat({ profile, activeBucket }) {
 
   const openMemberProfile = (authorId) => {
     const member = members.find(m => String(m.id) === String(authorId))
+    if (member) setSelectedMember(member)
+  }
+
+  const openMemberFromMention = (member) => {
     if (member) setSelectedMember(member)
   }
 
@@ -418,6 +468,7 @@ export function Chat({ profile, activeBucket }) {
           void presenceTick
 
           const isOwn = String(m.author_id).toLowerCase() === String(profile.id).toLowerCase()
+          const mentionedMe = !isOwn && messageMentionsUser(m.text, profile.name)
           const editable = isOwn && canEditMessage(m)
           const { status, isOnline } = getAuthorPresence(m.author_id)
           const dropdownOpensDown = idx < 3
@@ -454,10 +505,10 @@ export function Chat({ profile, activeBucket }) {
                   'relative max-w-[85%] py-2.5 px-3.5 transition-colors duration-200',
 
                   isOwn
-
                     ? 'bg-[rgba(42,107,255,0.18)] border border-[rgba(42,107,255,0.4)] hover:border-ctrl-accent'
-
-                    : 'bg-ctrl-panel border border-ctrl-border hover:border-ctrl-border2'
+                    : mentionedMe
+                      ? 'bg-[rgba(255,184,0,0.12)] border border-[rgba(255,184,0,0.45)] hover:border-ctrl-warning'
+                      : 'bg-ctrl-panel border border-ctrl-border hover:border-ctrl-border2'
 
                 )}
 
@@ -595,8 +646,11 @@ export function Chat({ profile, activeBucket }) {
                     </div>
                   </div>
                 ) : m.text ? (
-                  <div className={cn('text-[13px] leading-normal', isOwn ? 'text-ctrl-text pr-5' : 'text-ctrl-text2')}>
-                    {renderMentionText(m.text, memberNameSet)}
+                  <div className={cn(
+                    'text-[13px] leading-normal',
+                    isOwn ? 'text-ctrl-text pr-5' : mentionedMe ? 'text-ctrl-text' : 'text-ctrl-text2'
+                  )}>
+                    {renderMentionText(m.text, memberNameSet, profile.name, memberByMentionKey, openMemberFromMention)}
                   </div>
                 ) : null}
                 <ChatMessageAttachments attachments={m.attachments} isOwn={isOwn} />
