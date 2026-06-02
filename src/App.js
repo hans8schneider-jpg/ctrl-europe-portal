@@ -16,7 +16,7 @@ import { useAppData } from './context/AppDataContext'
 function LoadingScreen() {
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-ctrl-bg gap-4">
-      <div className="font-mono text-4xl font-bold tracking-[-1px]">[<span className="text-ctrl-accent [text-shadow:0_0_20px_rgba(42,107,255,0.5)]">CTRL</span>]</div>
+      <img src="/ctrl_logo_bez_pozadi.png" alt="CTRL" className="h-20 w-auto" />
       <div className="font-mono text-[11px] tracking-[3px] text-ctrl-text2 uppercase animate-pulse-slow">Načítám portál...</div>
     </div>
   )
