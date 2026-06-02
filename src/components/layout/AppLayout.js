@@ -251,7 +251,7 @@ export function AppLayout() {
         </div>
       </aside>
 
-      <div className="ml-[230px] flex-1 min-h-screen animate-fade-in max-[900px]:ml-0 max-[900px]:pb-[70px]">
+      <div className="ml-[230px] flex-1 min-h-screen animate-fade-in max-[900px]:ml-0 max-[900px]:pb-[70px] max-[900px]:overflow-x-hidden">
         <header className="h-[54px] bg-ctrl-panel border-b border-ctrl-border flex items-center px-7 gap-0 sticky top-0 z-[100] backdrop-blur-md max-[900px]:px-4 max-[900px]:h-[50px]">
           {activeBucket && (
             <>

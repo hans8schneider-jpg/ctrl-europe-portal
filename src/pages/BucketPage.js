@@ -36,10 +36,10 @@ export function BucketPage() {
   )
   return (
     <div className="animate-fade-in">
-      <div className="flex items-start gap-3.5 mb-5">
+      <div className="flex items-start gap-3.5 mb-5 min-w-0">
         <div className={cn('w-1 h-9 shrink-0', bucketBarCls(bucket))} />
         <div className="flex-1 min-w-0">
-          <div className="text-2xl font-sans font-bold tracking-normal normal-case">{bucket}</div>
+          <div className="text-2xl font-sans font-bold tracking-normal normal-case break-words">{bucket}</div>
           <div className="font-mono text-[10px] text-ctrl-text2 tracking-[2px] uppercase">
             {bucketMembers.length} členů
           </div>
