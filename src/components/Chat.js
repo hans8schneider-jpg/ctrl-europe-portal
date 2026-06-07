@@ -51,7 +51,7 @@ function renderMentionText(text, memberNameSet, profileName, memberByMentionKey,
   if (!text) return null
   const me = profileName ? currentUserMentionKey(profileName) : null
   const parts = text.split(/(@\S+)/g)
-  return parts.map((part, i) => {
+  return parts.flatMap((part, i) => {
     if (/^@\S+$/.test(part)) {
       const key = part.slice(1).toLowerCase()
       if (key === 'všichni' || memberNameSet.has(key)) {
@@ -85,7 +85,24 @@ function renderMentionText(text, memberNameSet, profileName, memberByMentionKey,
         )
       }
     }
-    return part
+    // Split plain text by URLs
+    const urlParts = part.split(/(https?:\/\/\S+)/g)
+    return urlParts.map((urlPart, j) => {
+      if (/^https?:\/\//.test(urlPart)) {
+        return (
+          <a
+            key={`${i}-${j}`}
+            href={urlPart}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-ctrl-accent underline hover:text-ctrl-accent2 break-all"
+          >
+            {urlPart}
+          </a>
+        )
+      }
+      return urlPart
+    })
   })
 }
 
@@ -114,6 +131,7 @@ export function Chat({ profile, activeBucket }) {
 
   const [mentionSearch, setMentionSearch] = useState(null)
   const [pendingMentions, setPendingMentions] = useState([])
+  const [isDraggingOver, setIsDraggingOver] = useState(false)
 
   const bottomRef = useRef(null)
   const fileInputRef = useRef(null)
@@ -285,6 +303,23 @@ export function Chat({ profile, activeBucket }) {
     setPendingFiles(next)
   }
 
+  const handleDragOver = (e) => {
+    e.preventDefault()
+    if (canWrite && !isDraggingOver) setIsDraggingOver(true)
+  }
+
+  const handleDragLeave = (e) => {
+    if (!e.currentTarget.contains(e.relatedTarget)) setIsDraggingOver(false)
+  }
+
+  const handleDrop = (e) => {
+    e.preventDefault()
+    setIsDraggingOver(false)
+    if (!canWrite) return
+    const files = Array.from(e.dataTransfer.files)
+    if (files.length) addPendingFiles(files)
+  }
+
   const handleInputChange = (e) => {
     const val = e.target.value
     setInput(val)
@@ -443,7 +478,17 @@ export function Chat({ profile, activeBucket }) {
 
   return (
 
-    <div className="flex flex-col h-[calc(100vh-110px)] max-[900px]:h-[calc(100vh-130px)] animate-fade-in">
+    <div
+      className="flex flex-col h-[calc(100vh-110px)] max-[900px]:h-[calc(100vh-130px)] animate-fade-in relative"
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+    >
+      {isDraggingOver && (
+        <div className="absolute inset-0 z-50 flex items-center justify-center bg-[rgba(42,107,255,0.12)] border-2 border-dashed border-ctrl-accent pointer-events-none">
+          <span className="text-ctrl-accent font-mono text-[13px] tracking-wide">Pusť soubory sem</span>
+        </div>
+      )}
 
       <Sec>CHAT · {bucket.toUpperCase()}</Sec>
 
