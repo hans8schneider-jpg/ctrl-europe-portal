@@ -200,6 +200,13 @@ export function DashboardPage() {
         </section>
       </div>
 
+      <section className="mt-8">
+        <Sec>ČLÁNKY</Sec>
+        <div className="flex flex-col items-center justify-center py-12 px-6 bg-ctrl-panel border border-ctrl-border border-dashed text-center gap-2">
+          <div className="font-mono text-[10px] tracking-[3px] uppercase text-ctrl-text3">Články se chystají</div>
+        </div>
+      </section>
+
       {selectedEvent && (
         <EventModal event={selectedEvent} onClose={() => setSelectedEvent(null)} />
       )}
