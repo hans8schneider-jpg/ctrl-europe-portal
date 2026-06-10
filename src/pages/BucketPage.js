@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useParams, Navigate, useSearchParams } from 'react-router-dom'
-import { cn } from '../lib/utils'
+import { cn, isUserOnline } from '../lib/utils'
 import { bucketBarCls } from '../constants/buckets'
 import { slugToBucket } from '../lib/bucketSlug'
 import { DEVELOPERS_BUCKET, getBrowsableBuckets } from '../lib/permissions'
@@ -34,27 +34,55 @@ export function BucketPage() {
       ? m.layer === 'developer' || m.bucket === bucket || m.secondary_bucket === bucket
       : m.bucket === bucket || m.secondary_bucket === bucket
   )
+  const onlineCount = bucketMembers.filter(m => isUserOnline(m.last_seen)).length
+
   return (
     <div className="animate-fade-in">
-      <div className="flex items-start gap-3.5 mb-5 min-w-0">
-        <div className={cn('w-1 h-9 shrink-0', bucketBarCls(bucket))} />
-        <div className="flex-1 min-w-0">
-          <div className="text-2xl font-sans font-bold tracking-normal normal-case break-words">{bucket}</div>
-          <div className="font-mono text-[10px] text-ctrl-text2 tracking-[2px] uppercase">
-            {bucketMembers.length} členů
+      <div className="mb-6">
+        <div className="flex items-start gap-3.5 min-w-0">
+          <div className={cn('w-1 shrink-0 self-stretch min-h-9', bucketBarCls(bucket))} />
+          <div className="flex-1 min-w-0">
+            <div className="flex flex-col min-[901px]:flex-row min-[901px]:items-start min-[901px]:justify-between min-[901px]:gap-5">
+              <div className="min-w-0 flex-1">
+                <h1
+                  className="text-xl min-[901px]:text-2xl font-sans font-bold tracking-normal normal-case leading-snug break-words [overflow-wrap:anywhere]"
+                  title={bucket}
+                >
+                  {bucket}
+                </h1>
+                {bucketMembers.length > 0 && (
+                  <div className="mt-2.5 flex items-center justify-between gap-3 w-full">
+                    <div className="font-mono text-[10px] text-ctrl-text2 tracking-[2px] uppercase flex flex-wrap items-center gap-x-1.5 gap-y-1 min-w-0">
+                      <span>{bucketMembers.length} členů</span>
+                      <span className="text-ctrl-text3/40">·</span>
+                      <span className={onlineCount > 0 ? 'text-ctrl-success' : 'text-ctrl-text3'}>
+                        {onlineCount} online
+                      </span>
+                    </div>
+                    <BucketMemberStrip
+                      variant="mobile"
+                      members={bucketMembers}
+                      bucket={bucket}
+                      onMemberClick={setSelectedMember}
+                    />
+                  </div>
+                )}
+              </div>
+              <BucketMemberStrip
+                variant="desktop"
+                members={bucketMembers}
+                bucket={bucket}
+                onMemberClick={setSelectedMember}
+              />
+            </div>
           </div>
         </div>
-        <BucketMemberStrip
-          members={bucketMembers}
-          bucket={bucket}
-          onMemberClick={setSelectedMember}
-        />
       </div>
       {selectedMember && <MemberModal member={selectedMember} tasks={tasks} onClose={() => setSelectedMember(null)} />}
 
       <div className="flex gap-0 mb-5 border-b border-ctrl-border">
-        <div className={cn('py-2.5 px-5 font-mono text-[10px] tracking-[2px] uppercase cursor-pointer text-ctrl-text2 border-b-2 border-transparent -mb-px transition-all duration-200 hover:text-ctrl-text', view === 'tasks' && 'text-ctrl-accent border-b-ctrl-accent')} onClick={() => setView('tasks')}>ÚKOLY</div>
-        <div className={cn('py-2.5 px-5 font-mono text-[10px] tracking-[2px] uppercase cursor-pointer text-ctrl-text2 border-b-2 border-transparent -mb-px transition-all duration-200 hover:text-ctrl-text', view === 'chat' && 'text-ctrl-accent border-b-ctrl-accent')} onClick={() => setView('chat')}>CHAT</div>
+        <div className={cn('py-2.5 px-3 min-[480px]:px-5 font-mono text-[10px] tracking-[2px] uppercase cursor-pointer text-ctrl-text2 border-b-2 border-transparent -mb-px transition-all duration-200 hover:text-ctrl-text', view === 'tasks' && 'text-ctrl-accent border-b-ctrl-accent')} onClick={() => setView('tasks')}>ÚKOLY</div>
+        <div className={cn('py-2.5 px-3 min-[480px]:px-5 font-mono text-[10px] tracking-[2px] uppercase cursor-pointer text-ctrl-text2 border-b-2 border-transparent -mb-px transition-all duration-200 hover:text-ctrl-text', view === 'chat' && 'text-ctrl-accent border-b-ctrl-accent')} onClick={() => setView('chat')}>CHAT</div>
       </div>
 
       {view === 'tasks' && (
