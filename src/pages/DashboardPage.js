@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { supabase } from '../supabase'
 import { Sec } from '../components/ui/Sec'
 import { EventModal } from '../components/EventModal'
@@ -22,6 +22,8 @@ export function DashboardPage() {
   const [newNews, setNewNews] = useState({ title: '', body: '', tag: 'INFO', type: 'accent' })
   const [newEvent, setNewEvent] = useState({ title: '', description: '', date: '', time: '', type: 'event' })
   const [selectedEvent, setSelectedEvent] = useState(null)
+  const [addingNews, setAddingNews] = useState(false)
+  const addingNewsRef = useRef(false)
   const canEditNews = canManageNews(profile.layer)
   const admin = isAdmin(profile.layer)
 
@@ -40,13 +42,20 @@ export function DashboardPage() {
   }
 
   const addNews = async () => {
-    if (!newNews.title || !newNews.body) return
-    const { data } = await supabase.from('news').insert([{ ...newNews, created_by: profile.id }]).select()
-    if (data) {
-      setNews(prev => [data[0], ...prev])
-      setNewNews({ title: '', body: '', tag: 'INFO', type: 'accent' })
-      setShowAddNews(false)
-      await loadNotifications(profile.id, profile)
+    if (addingNewsRef.current || !newNews.title || !newNews.body) return
+    addingNewsRef.current = true
+    setAddingNews(true)
+    try {
+      const { data } = await supabase.from('news').insert([{ ...newNews, created_by: profile.id }]).select()
+      if (data) {
+        setNews(prev => [data[0], ...prev])
+        setNewNews({ title: '', body: '', tag: 'INFO', type: 'accent' })
+        setShowAddNews(false)
+        await loadNotifications(profile.id, profile)
+      }
+    } finally {
+      addingNewsRef.current = false
+      setAddingNews(false)
     }
   }
 
@@ -122,7 +131,7 @@ export function DashboardPage() {
                 <input className="flex-1 min-w-[140px] bg-ctrl-bg2 border border-ctrl-border text-ctrl-text py-[9px] px-3 text-[13px] font-sans outline-none transition-all duration-200 focus:border-ctrl-accent focus:shadow-[0_0_0_2px_rgba(42,107,255,0.1)]" placeholder="Text oznámení... (odkaz: [text](https://...))" value={newNews.body} onChange={e => setNewNews(p => ({ ...p, body: e.target.value }))} />
               </div>
               <div className="flex gap-2">
-                <button className="border-0 py-[9px] px-[18px] text-[11px] font-bold tracking-[2px] uppercase cursor-pointer font-sans transition-all duration-200 bg-ctrl-accent text-white hover:bg-ctrl-accent2 hover:-translate-y-px" onClick={addNews}>PŘIDAT</button>
+                <button className="border-0 py-[9px] px-[18px] text-[11px] font-bold tracking-[2px] uppercase cursor-pointer font-sans transition-all duration-200 bg-ctrl-accent text-white hover:bg-ctrl-accent2 hover:-translate-y-px disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0" onClick={addNews} disabled={addingNews}>{addingNews ? 'PŘIDÁVÁM...' : 'PŘIDAT'}</button>
                 <button className="border-0 py-[9px] px-[18px] text-[11px] font-bold tracking-[2px] uppercase cursor-pointer font-sans transition-all duration-200 bg-transparent border border-ctrl-border text-ctrl-text2 hover:border-ctrl-text2 hover:text-ctrl-text" onClick={() => setShowAddNews(false)}>ZRUŠIT</button>
               </div>
             </div>
