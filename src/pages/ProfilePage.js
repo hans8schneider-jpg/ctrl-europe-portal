@@ -14,6 +14,7 @@ import {
   canAccessAdminPanel,
   canAddTasks,
   canManageNews,
+  canSeeAllBuckets,
   isAdmin,
   isDeveloper,
 } from '../lib/permissions'
@@ -71,6 +72,7 @@ export function ProfilePage() {
         profile.layer !== 'pozorovatel' && 'Označování úkolů',
         canAddTasks(profile.layer) && 'Přidávání úkolů',
         isDeveloper(profile.layer) && 'Přidávání úkolů v buňce Developeři',
+        canSeeAllBuckets(profile) && 'Viditelnost všech buněk',
         isAdmin(profile.layer) && 'Admin panel',
         canAccessAdminPanel(profile.layer) &&
           !isAdmin(profile.layer) &&

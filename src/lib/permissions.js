@@ -24,7 +24,12 @@ export const canAddTasks = (layer, bucket = null) => {
   if (layer === 'developer' && bucket === DEVELOPERS_BUCKET) return true
   return false
 }
-export const canSeeAllBuckets = (role) => role === 'admin'
+/** Sloupec profiles.can_see_all_buckets — vidí všechny buňky (týmové i orgány). */
+export const canSeeAllBuckets = (profile) => Boolean(profile?.can_see_all_buckets)
+
+/** Stejný přístup ke všem buňkám jako developer (navigace, stránka buňky). */
+export const hasAllTeamBucketAccess = (profile) =>
+  profile?.layer === 'developer' || canSeeAllBuckets(profile)
 export const canObserveAll = (role) => ['admin', 'pozorovatel'].includes(role)
 export const isAdmin = (role) => role === 'admin'
 export const isDeveloper = (role) => role === 'developer'
@@ -105,9 +110,7 @@ export const getAccessibleBuckets = (profile) => {
 export const getBrowsableBuckets = (profile) => {
   if (!profile) return []
   if (profile.layer === 'admin') return ALL_BUCKETS
-  if (profile.layer === 'developer') {
-    return [...new Set([...TEAM_BUCKETS, ...getAccessibleBuckets(profile)])]
-  }
+  if (hasAllTeamBucketAccess(profile)) return ALL_BUCKETS
   return getAccessibleBuckets(profile)
 }
 
@@ -115,10 +118,11 @@ export const getBrowsableBuckets = (profile) => {
 export const getSidebarBucketSections = (profile) => {
   const accessible = getAccessibleBuckets(profile)
   const team = accessible.filter(b => TEAM_BUCKETS.includes(b))
-  const organs = accessible.filter(b => SPECIAL_BUCKETS.includes(b))
-  const others =
-    profile?.layer === 'developer'
-      ? TEAM_BUCKETS.filter(b => !team.includes(b))
-      : []
+  const organs = hasAllTeamBucketAccess(profile)
+    ? SPECIAL_BUCKETS
+    : accessible.filter(b => SPECIAL_BUCKETS.includes(b))
+  const others = hasAllTeamBucketAccess(profile)
+    ? TEAM_BUCKETS.filter(b => !team.includes(b))
+    : []
   return { team, organs, others }
 }
