@@ -317,7 +317,7 @@ export function AppDataProvider({ session, children }) {
   }, [])
 
   const admin = profile ? isAdmin(profile.layer) : false
-  const adminPanelAccess = profile ? canAccessAdminPanel(profile.layer) : false
+  const adminPanelAccess = profile ? canAccessAdminPanel(profile) : false
 
   const value = {
     profile,

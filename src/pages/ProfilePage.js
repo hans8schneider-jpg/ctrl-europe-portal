@@ -74,13 +74,13 @@ export function ProfilePage() {
         isDeveloper(profile.layer) && 'Přidávání úkolů v buňce Developeři',
         canSeeAllBuckets(profile) && 'Viditelnost všech buněk',
         isAdmin(profile.layer) && 'Admin panel',
-        canAccessAdminPanel(profile.layer) &&
+        canAccessAdminPanel(profile) &&
           !isAdmin(profile.layer) &&
           'Admin panel — reporty a členové',
         isAdmin(profile.layer) && 'Správa všech buněk',
         profile.layer === 'pozorovatel' && 'Čtení všech buněk',
       ].filter(Boolean),
-    [profile.layer]
+    [profile.layer, profile.can_see_all_buckets]
   )
 
   const updateStatus = async newStatus => {

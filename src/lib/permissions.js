@@ -33,7 +33,12 @@ export const hasAllTeamBucketAccess = (profile) =>
 export const canObserveAll = (role) => ['admin', 'pozorovatel'].includes(role)
 export const isAdmin = (role) => role === 'admin'
 export const isDeveloper = (role) => role === 'developer'
-export const canAccessAdminPanel = (role) => ['admin', 'developer'].includes(role)
+export const canAccessAdminPanel = (profile) => {
+  if (!profile) return false
+  const layer = typeof profile === 'string' ? profile : profile.layer
+  if (['admin', 'developer'].includes(layer)) return true
+  return typeof profile === 'object' && canSeeAllBuckets(profile)
+}
 /** Oznámení na dashboardu (kalendář akcí jen admin) */
 export const canManageNews = (role) => ['admin', 'developer'].includes(role)
 

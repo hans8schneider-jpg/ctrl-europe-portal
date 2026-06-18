@@ -25,7 +25,7 @@ function LoadingScreen() {
 function AdminRoute() {
   const { profile, loading } = useAppData()
   if (loading) return <LoadingScreen />
-  if (!canAccessAdminPanel(profile.layer)) return <Navigate to="/" replace />
+  if (!canAccessAdminPanel(profile)) return <Navigate to="/" replace />
   return <AdminPage />
 }
 
