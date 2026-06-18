@@ -292,6 +292,9 @@ export function AdminPage() {
               );
             </div>
             <div className="text-ctrl-text2 mt-3 text-[11px]">
+              profile_id se přiřadí automaticky (6 znaků). Pokud chybí, spusť supabase/profiles-profile-id.sql.
+            </div>
+            <div className="text-ctrl-text2 mt-1 text-[11px]">
               Dostupné vrstvy: admin · developer · predsednictvo · zastupce_predsednictva · vedouci · clen · pozorovatel
             </div>
           </div>
