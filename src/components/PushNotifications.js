@@ -5,6 +5,7 @@ import {
   getPushPermission,
   hasActivePushSubscription,
   isIosDevice,
+  isPushPotentiallyAvailable,
   isPushSupported,
   isStandalonePwa,
   subscribeToPush,
@@ -36,6 +37,27 @@ function PushDeviceCard({
       <div className="mb-4 border border-ctrl-border bg-ctrl-bg2/30 py-3.5 px-4">
         <p className="text-xs text-ctrl-text2 leading-relaxed">
           Tento prohlížeč bohužel push oznámení nepodporuje.
+        </p>
+      </div>
+    )
+  }
+
+  if (iosNeedsPwa && !subscribed) {
+    return (
+      <div className="mb-4 border border-ctrl-warning/35 bg-ctrl-warning/10 py-3.5 px-4">
+        <p className="text-[13px] font-medium text-ctrl-text mb-2">Push na iPhonu / iPadu</p>
+        <p className="text-xs text-ctrl-text2 leading-relaxed mb-3">
+          V Safari i v ostatních prohlížečích na iOS push nejdou zapnout přímo v prohlížeči — Apple
+          je povoluje jen v aplikaci přidané na domovskou obrazovku.
+        </p>
+        <ol className="text-xs text-ctrl-text2 leading-relaxed list-decimal list-inside space-y-1.5 mb-3">
+          <li>Otevři portál v Safari</li>
+          <li>Klepnout na Sdílet (čtverec se šipkou nahoru)</li>
+          <li>Zvol „Přidat na plochu“</li>
+          <li>Spusť portál z ikony na ploše a zde zapni upozornění</li>
+        </ol>
+        <p className="text-xs text-ctrl-text2 leading-relaxed">
+          Vyžaduje iOS 16.4 nebo novější.
         </p>
       </div>
     )
@@ -86,7 +108,7 @@ function PushDeviceCard({
             <button
               type="button"
               onClick={onSubscribe}
-              disabled={busy || denied || iosNeedsPwa}
+              disabled={busy || denied}
               className="border border-ctrl-accent bg-[rgba(42,107,255,0.08)] text-ctrl-accent py-2 px-3.5 text-[12px] font-semibold cursor-pointer font-sans transition-all duration-200 hover:bg-[rgba(42,107,255,0.14)] hover:border-ctrl-accent2 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {busy ? 'Čekám na prohlížeč…' : 'Povolit upozornění'}
@@ -94,13 +116,6 @@ function PushDeviceCard({
           )}
         </div>
       </div>
-
-      {iosNeedsPwa && !subscribed && (
-        <p className="text-xs text-ctrl-warning mt-3 leading-relaxed border border-ctrl-warning/30 bg-ctrl-warning/10 py-2 px-3">
-          Na iPhonu nejdřív přidej portál na domovskou obrazovku (Safari → Sdílet → Přidat na
-          plochu), pak upozornění zapni znovu.
-        </p>
-      )}
 
       {denied && !subscribed && (
         <p className="text-xs text-ctrl-danger mt-3 leading-relaxed">
@@ -178,8 +193,8 @@ export function PushNotifications({ userId, embedded = false, onPushActiveChange
     setMessage('Push jsou vypnutá na tomto zařízení.')
   }
 
-  const unsupported = !isPushSupported()
-  const iosNeedsPwa = isIosDevice() && !isStandalonePwa()
+  const unsupported = !isPushPotentiallyAvailable()
+  const iosNeedsPwa = isIosDevice() && !isStandalonePwa() && !isPushSupported()
   const denied = permission === 'denied'
 
   const card = (

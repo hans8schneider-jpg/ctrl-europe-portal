@@ -22,6 +22,11 @@ export function isPushSupported() {
   )
 }
 
+/** Push can work here now, or on iOS after Add to Home Screen (iOS 16.4+). */
+export function isPushPotentiallyAvailable() {
+  return isPushSupported() || isIosDevice()
+}
+
 export function isIosDevice() {
   if (typeof navigator === 'undefined') return false
   return /iPad|iPhone|iPod/.test(navigator.userAgent)
@@ -36,7 +41,10 @@ export function isStandalonePwa() {
 }
 
 export function getPushPermission() {
-  if (!isPushSupported()) return 'unsupported'
+  if (!isPushSupported()) {
+    if (isIosDevice() && !isStandalonePwa()) return 'ios-needs-pwa'
+    return 'unsupported'
+  }
   return Notification.permission
 }
 
