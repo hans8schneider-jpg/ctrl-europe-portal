@@ -8,6 +8,14 @@ import { lastSeenCls } from '../constants/styles'
 import { Sec } from '../components/ui/Sec'
 import { MemberModal } from '../components/MemberModal'
 import { isAdmin } from '../lib/permissions'
+import {
+  computeMemberWorkStats,
+  computePresenceSummary,
+  computeTaskSummary,
+  getWarningMembers,
+  sortByLoginAsc,
+  sortByProductivityDesc,
+} from '../lib/adminStats'
 import { useAppData } from '../context/AppDataContext'
 
 const REPORT_TYPE_LABELS = { bug: 'Chyba', idea: 'Nápad' }
@@ -79,6 +87,13 @@ export function AdminPage() {
   }).filter(s => s.total > 0)
 
   const maxActive = Math.max(...bucketStats.map(s => s.active), 1)
+
+  const presenceSummary = useMemo(() => computePresenceSummary(members), [members])
+  const taskSummary = useMemo(() => computeTaskSummary(tasks), [tasks])
+  const memberWorkStats = useMemo(() => computeMemberWorkStats(members, tasks), [members, tasks])
+  const inactiveByLogin = useMemo(() => sortByLoginAsc(memberWorkStats), [memberWorkStats])
+  const topByProductivity = useMemo(() => sortByProductivityDesc(memberWorkStats), [memberWorkStats])
+  const warningMembers = useMemo(() => getWarningMembers(members), [members])
 
   const membersFiltersActive = Boolean(nameQuery.trim() || bucketFilter || layerFilter)
 
@@ -210,6 +225,163 @@ export function AdminPage() {
 
       {fullAdmin && activeTab === 'stats' && (
         <div>
+          <div className="grid grid-cols-4 gap-3 mb-3 max-[900px]:grid-cols-2 max-[900px]:gap-2">
+            <div className="p-4 bg-ctrl-panel border border-ctrl-border border-b-2 border-b-ctrl-success">
+              <div className="font-mono text-3xl font-bold leading-none mb-1 text-ctrl-success">{presenceSummary.online}</div>
+              <div className="font-mono text-[9px] tracking-[2px] uppercase text-ctrl-text2">Online teď</div>
+            </div>
+            <div className="p-4 bg-ctrl-panel border border-ctrl-border border-b-2 border-b-ctrl-accent">
+              <div className="font-mono text-3xl font-bold leading-none mb-1 text-ctrl-accent">{presenceSummary.activeWeek}</div>
+              <div className="font-mono text-[9px] tracking-[2px] uppercase text-ctrl-text2">Přihlášení 7 dní</div>
+            </div>
+            <div className="p-4 bg-ctrl-panel border border-ctrl-border border-b-2 border-b-ctrl-danger">
+              <div className="font-mono text-3xl font-bold leading-none mb-1 text-ctrl-danger">{presenceSummary.inactive7d}</div>
+              <div className="font-mono text-[9px] tracking-[2px] uppercase text-ctrl-text2">Neaktivní 7+ dní</div>
+            </div>
+            <div className="p-4 bg-ctrl-panel border border-ctrl-border border-b-2 border-b-ctrl-warning">
+              <div className="font-mono text-3xl font-bold leading-none mb-1 text-ctrl-warning">{presenceSummary.neverLoggedIn}</div>
+              <div className="font-mono text-[9px] tracking-[2px] uppercase text-ctrl-text2">Nikdy se nepřihlásili</div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-4 gap-3 mb-3 max-[900px]:grid-cols-2 max-[900px]:gap-2">
+            <div className="p-4 bg-ctrl-panel border border-ctrl-border">
+              <div className="font-mono text-2xl font-bold leading-none mb-1 text-ctrl-success">{taskSummary.completed7d}</div>
+              <div className="font-mono text-[9px] tracking-[2px] uppercase text-ctrl-text2">Splněno za 7 dní</div>
+            </div>
+            <div className="p-4 bg-ctrl-panel border border-ctrl-border">
+              <div className="font-mono text-2xl font-bold leading-none mb-1 text-ctrl-text2">{taskSummary.completed30d}</div>
+              <div className="font-mono text-[9px] tracking-[2px] uppercase text-ctrl-text2">Splněno za 30 dní</div>
+            </div>
+            <div className="p-4 bg-ctrl-panel border border-ctrl-border">
+              <div className="font-mono text-2xl font-bold leading-none mb-1 text-ctrl-accent">{taskSummary.created7d}</div>
+              <div className="font-mono text-[9px] tracking-[2px] uppercase text-ctrl-text2">Nových úkolů 7 dní</div>
+            </div>
+            <div className="p-4 bg-ctrl-panel border border-ctrl-border">
+              <div className="font-mono text-2xl font-bold leading-none mb-1 text-ctrl-warning">{taskSummary.openTotal}</div>
+              <div className="font-mono text-[9px] tracking-[2px] uppercase text-ctrl-text2">Otevřených úkolů</div>
+            </div>
+          </div>
+
+          {warningMembers.length > 0 && (
+            <div className="bg-ctrl-panel border border-ctrl-danger/40 p-5 mb-3">
+              <Sec>VYŽADUJE POZORNOST — SLABÉ NEBO ŽÁDNÉ PŘIHLÁŠENÍ</Sec>
+              <p className="text-xs text-ctrl-text2 mb-3 leading-relaxed">
+                Členové, kteří se 3+ dní nepřihlásili nebo portál nikdy neotevřeli.
+              </p>
+              {warningMembers.map(m => (
+                <div
+                  key={m.id}
+                  role="button"
+                  tabIndex={0}
+                  className="flex items-center gap-3 py-2.5 border-b border-ctrl-border last:border-b-0 cursor-pointer hover:bg-ctrl-bg2/40 transition-colors duration-200 max-[900px]:flex-wrap"
+                  onClick={() => setSelectedMember(m)}
+                  onKeyDown={e => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault()
+                      setSelectedMember(m)
+                    }
+                  }}
+                >
+                  <div className={cn('w-[30px] h-[30px] flex items-center justify-center text-[11px] font-bold font-mono shrink-0', bucketMemberAvCls(m.bucket))}>
+                    {getInitials(m.name)}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-[13px] font-bold">{m.name}</div>
+                    <div className="font-mono text-[10px] text-ctrl-text2 mt-0.5">
+                      {m.bucket}{m.secondary_bucket && ` + ${m.secondary_bucket}`} · {ROLE_LABELS[m.layer] || m.layer}
+                    </div>
+                  </div>
+                  <div className={cn('font-mono text-[10px] shrink-0', lastSeenCls(getLastSeenKind(m.last_seen)))}>
+                    {formatTime(m.last_seen)}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <div className="bg-ctrl-panel border border-ctrl-border p-5 mb-3 overflow-x-auto">
+            <Sec>PŘIHLÁŠENÍ ČLENŮ — OD NEJMÉNĚ AKTIVNÍCH</Sec>
+            <table className="w-full min-w-[640px] border-collapse">
+              <thead>
+                <tr className="font-mono text-[9px] tracking-[1.5px] uppercase text-ctrl-text3 text-left border-b border-ctrl-border">
+                  <th className="py-2 pr-3 font-normal">Člen</th>
+                  <th className="py-2 pr-3 font-normal">Buňka</th>
+                  <th className="py-2 pr-3 font-normal">Naposledy</th>
+                  <th className="py-2 pr-3 font-normal text-right">Splněno 7d</th>
+                  <th className="py-2 pr-3 font-normal text-right">Splněno 30d</th>
+                  <th className="py-2 pr-3 font-normal text-right">Otevřené</th>
+                </tr>
+              </thead>
+              <tbody>
+                {inactiveByLogin.map(({ member: m, completed7d, completed30d, openAssigned }) => (
+                  <tr
+                    key={m.id}
+                    className="border-b border-ctrl-border last:border-b-0 cursor-pointer hover:bg-ctrl-bg2/40 transition-colors duration-200"
+                    onClick={() => setSelectedMember(m)}
+                  >
+                    <td className="py-2.5 pr-3">
+                      <div className="text-[13px] font-bold">{m.name}</div>
+                      <div className="font-mono text-[9px] text-ctrl-text3 mt-0.5">{ROLE_LABELS[m.layer] || m.layer}</div>
+                    </td>
+                    <td className="py-2.5 pr-3 font-mono text-[11px] text-ctrl-text2">{m.bucket}</td>
+                    <td className={cn('py-2.5 pr-3 font-mono text-[11px]', lastSeenCls(getLastSeenKind(m.last_seen)))}>
+                      {formatTime(m.last_seen)}
+                    </td>
+                    <td className="py-2.5 pr-3 font-mono text-[11px] text-right text-ctrl-success">{completed7d}</td>
+                    <td className="py-2.5 pr-3 font-mono text-[11px] text-right text-ctrl-text2">{completed30d}</td>
+                    <td className="py-2.5 pr-3 font-mono text-[11px] text-right text-ctrl-warning">{openAssigned}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <div className="bg-ctrl-panel border border-ctrl-border p-5 mb-3 overflow-x-auto">
+            <Sec>PRODUKTIVITA — NEJVÍCE SPLNĚNÝCH ÚKOLŮ (7 DNÍ)</Sec>
+            <table className="w-full min-w-[640px] border-collapse">
+              <thead>
+                <tr className="font-mono text-[9px] tracking-[1.5px] uppercase text-ctrl-text3 text-left border-b border-ctrl-border">
+                  <th className="py-2 pr-3 font-normal">Člen</th>
+                  <th className="py-2 pr-3 font-normal">Buňka</th>
+                  <th className="py-2 pr-3 font-normal text-right">Splněno 7d</th>
+                  <th className="py-2 pr-3 font-normal text-right">Splněno 30d</th>
+                  <th className="py-2 pr-3 font-normal text-right">Celkem</th>
+                  <th className="py-2 pr-3 font-normal text-right">Vytvořeno 7d</th>
+                  <th className="py-2 pr-3 font-normal">Naposledy</th>
+                </tr>
+              </thead>
+              <tbody>
+                {topByProductivity
+                  .filter(row => row.completed7d > 0 || row.completed30d > 0 || row.created7d > 0)
+                  .slice(0, 15)
+                  .map(({ member: m, completed7d, completed30d, completedTotal, created7d }) => (
+                    <tr
+                      key={m.id}
+                      className="border-b border-ctrl-border last:border-b-0 cursor-pointer hover:bg-ctrl-bg2/40 transition-colors duration-200"
+                      onClick={() => setSelectedMember(m)}
+                    >
+                      <td className="py-2.5 pr-3">
+                        <div className="text-[13px] font-bold">{m.name}</div>
+                        <div className="font-mono text-[9px] text-ctrl-text3 mt-0.5">{ROLE_LABELS[m.layer] || m.layer}</div>
+                      </td>
+                      <td className="py-2.5 pr-3 font-mono text-[11px] text-ctrl-text2">{m.bucket}</td>
+                      <td className="py-2.5 pr-3 font-mono text-[11px] text-right text-ctrl-success font-bold">{completed7d}</td>
+                      <td className="py-2.5 pr-3 font-mono text-[11px] text-right text-ctrl-text2">{completed30d}</td>
+                      <td className="py-2.5 pr-3 font-mono text-[11px] text-right text-ctrl-text3">{completedTotal}</td>
+                      <td className="py-2.5 pr-3 font-mono text-[11px] text-right text-ctrl-accent">{created7d}</td>
+                      <td className={cn('py-2.5 pr-3 font-mono text-[11px]', lastSeenCls(getLastSeenKind(m.last_seen)))}>
+                        {formatTime(m.last_seen)}
+                      </td>
+                    </tr>
+                  ))}
+              </tbody>
+            </table>
+            {topByProductivity.every(row => row.completed7d === 0 && row.completed30d === 0 && row.created7d === 0) && (
+              <p className="text-xs text-ctrl-text2 py-3">Za posledních 30 dní nikdo nesplnil ani nevytvořil úkol.</p>
+            )}
+          </div>
+
           <div className="bg-ctrl-panel border border-ctrl-border p-5 mb-3">
             <Sec>AKTIVITA BUNĚK — POSLEDNÍCH 7 DNÍ</Sec>
             {bucketStats.map(s => (
