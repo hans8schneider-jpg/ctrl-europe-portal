@@ -1,4 +1,5 @@
 import { supabase } from '../supabase'
+import { inAppAllowedForProfile } from './notificationPreferences'
 
 export function notificationVisibleToProfile(notification, profile) {
   if (!profile || !notification) return false
@@ -12,7 +13,16 @@ export function notificationVisibleToProfile(notification, profile) {
   return buckets.includes(target)
 }
 
-export async function createNotification({ type, title, body, bucket_target, ref_id, created_by, user_target }) {
+export async function createNotification({
+  type,
+  title,
+  body,
+  bucket_target,
+  ref_id,
+  created_by,
+  user_target,
+  push_only = false,
+}) {
   const { data, error } = await supabase
     .from('notifications')
     .insert([{
@@ -23,6 +33,7 @@ export async function createNotification({ type, title, body, bucket_target, ref
       ref_id: ref_id != null ? String(ref_id) : null,
       created_by: created_by || null,
       user_target: user_target || null,
+      push_only: Boolean(push_only),
     }])
     .select()
     .single()
@@ -126,4 +137,27 @@ export function buildMentionNotification({ authorName, bucket, messageText, targ
     bucket_target: bucket,
     user_target: targetUserId || null,
   }
+}
+
+export function buildChatNotification({ authorName, bucket, messageText, hasAttachments }) {
+  let body = 'Nová zpráva v chatu'
+  if (messageText) {
+    body = messageText.length > 120 ? `${messageText.slice(0, 117)}…` : messageText
+  } else if (hasAttachments) {
+    body = 'Nová zpráva s přílohou'
+  }
+
+  return {
+    type: 'chat',
+    title: `${authorName} · ${bucket}`,
+    body,
+    bucket_target: bucket,
+    push_only: true,
+  }
+}
+
+export function filterInAppNotifications(notifications, profile) {
+  return notifications.filter(
+    n => notificationVisibleToProfile(n, profile) && inAppAllowedForProfile(n, profile),
+  )
 }

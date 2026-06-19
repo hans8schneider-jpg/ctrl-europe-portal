@@ -23,7 +23,7 @@ import { Sec } from "../components/ui/Sec";
 import { StatusPicker } from "../components/ui/StatusPicker";
 import { StatusBadge } from "../components/StatusBadge";
 import { PasswordChange } from "../components/PasswordChange";
-import { PushNotifications } from "../components/PushNotifications";
+import { NotificationSettings } from "../components/NotificationSettings";
 import { useAppData } from "../context/AppDataContext";
 
 const panelCls =
@@ -328,7 +328,7 @@ export function ProfilePage() {
 
           <PasswordChange />
 
-          <PushNotifications userId={profile.id} />
+          <NotificationSettings profile={profile} />
 
           <div className={cn(panelCls, "p-5")}>
             <Sec>DOKUMENTY SPOLKU</Sec>

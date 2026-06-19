@@ -5,9 +5,11 @@ import { canViewerSeeTask } from '../lib/tasks'
 import { applyBucketRows } from '../constants/buckets'
 import {
   fetchNotificationsForUser,
+  filterInAppNotifications,
   markNotificationsRead,
   notificationVisibleToProfile,
 } from '../lib/notifications'
+import { inAppAllowedForProfile } from '../lib/notificationPreferences'
 
 const AppDataContext = createContext(null)
 const LAST_SEEN_INTERVAL_MS = 5 * 60 * 1000
@@ -75,8 +77,19 @@ export function AppDataProvider({ session, children }) {
   const loadNotifications = useCallback(async (userId, currentProfile) => {
     if (!userId || !currentProfile) return
     const { data } = await fetchNotificationsForUser(userId)
-    setNotifications(data.filter(n => notificationVisibleToProfile(n, currentProfile)))
+    setNotifications(filterInAppNotifications(data, currentProfile))
   }, [])
+
+  useEffect(() => {
+    if (!profile) return
+    setNotifications(prev => prev.filter(n => inAppAllowedForProfile(n, profile)))
+  }, [
+    profile,
+    profile?.notify_inapp_tasks,
+    profile?.notify_inapp_news,
+    profile?.notify_inapp_events,
+    profile?.notify_inapp_mentions,
+  ])
 
   const markNotificationsAsRead = useCallback(async (notificationIds) => {
     if (!session?.user?.id || !notificationIds?.length) return
@@ -233,7 +246,7 @@ export function AppDataProvider({ session, children }) {
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'notifications' }, payload => {
         const row = payload.new
         const prof = profileRef.current
-        if (!row?.id || !prof || !notificationVisibleToProfile(row, prof)) return
+        if (!row?.id || !prof || !notificationVisibleToProfile(row, prof) || !inAppAllowedForProfile(row, prof)) return
         setNotifications(prev => {
           const id = String(row.id)
           if (prev.some(n => String(n.id) === id)) return prev

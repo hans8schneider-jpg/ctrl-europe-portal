@@ -10,12 +10,18 @@ type NotificationRow = {
   user_target?: string | null;
   ref_id?: string | null;
   created_by?: string | null;
+  push_only?: boolean | null;
 };
 
 type ProfileRow = {
   id: string;
   bucket?: string | null;
   secondary_bucket?: string | null;
+  notify_push_tasks?: boolean | null;
+  notify_push_news?: boolean | null;
+  notify_push_events?: boolean | null;
+  notify_push_mentions?: boolean | null;
+  notify_push_chat?: boolean | null;
 };
 
 type PushSubscriptionRow = {
@@ -56,11 +62,28 @@ function notificationVisibleToProfile(notification: NotificationRow, profile: Pr
   return buckets.includes(target);
 }
 
+function pushAllowedForProfile(notification: NotificationRow, profile: ProfileRow) {
+  switch (notification.type) {
+    case "task":
+      return profile.notify_push_tasks !== false;
+    case "news":
+      return profile.notify_push_news !== false;
+    case "event":
+      return profile.notify_push_events !== false;
+    case "mention":
+      return profile.notify_push_mentions !== false;
+    case "chat":
+      return profile.notify_push_chat === true;
+    default:
+      return true;
+  }
+}
+
 function notificationUrl(notification: NotificationRow, portalUrl: string) {
   const base = portalUrl.replace(/\/$/, "");
   const { type, bucket_target: bucketTarget } = notification;
 
-  if ((type === "task" || type === "mention") && bucketTarget) {
+  if ((type === "task" || type === "mention" || type === "chat") && bucketTarget) {
     return `${base}/bunka/${bucketToSlug(bucketTarget)}`;
   }
 
@@ -124,7 +147,7 @@ Deno.serve(async (req) => {
   const [{ data: subscriptions, error: subscriptionsError }, { data: profiles, error: profilesError }] =
     await Promise.all([
       supabase.from("push_subscriptions").select("id, user_id, endpoint, p256dh, auth"),
-      supabase.from("profiles").select("id, bucket, secondary_bucket"),
+      supabase.from("profiles").select("*"),
     ]);
 
   if (subscriptionsError || profilesError) {
@@ -153,6 +176,11 @@ Deno.serve(async (req) => {
   for (const row of (subscriptions ?? []) as PushSubscriptionRow[]) {
     const profile = profileById.get(String(row.user_id));
     if (!profile || !notificationVisibleToProfile(notification, profile)) {
+      skipped += 1;
+      continue;
+    }
+
+    if (!pushAllowedForProfile(notification, profile)) {
       skipped += 1;
       continue;
     }
