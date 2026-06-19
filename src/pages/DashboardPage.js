@@ -2,13 +2,14 @@ import { useMemo, useRef, useState } from 'react'
 import { supabase } from '../supabase'
 import { Sec } from '../components/ui/Sec'
 import { EventModal } from '../components/EventModal'
+import { EventsCalendar } from '../components/EventsCalendar'
 import { TextWithLinks } from '../components/TextWithLinks'
 import { cn } from '../lib/utils'
 import { formatDate } from '../lib/format'
 import { canManageNews, isAdmin } from '../lib/permissions'
 import { canViewerSeeTask } from '../lib/tasks'
 import { getMyAssignedOpenTasks } from '../lib/tasks'
-import { newsDotCls, eventTypeCls } from '../constants/styles'
+import { newsDotCls } from '../constants/styles'
 import { useAppData } from '../context/AppDataContext'
 
 export function DashboardPage() {
@@ -181,31 +182,7 @@ export function DashboardPage() {
             </div>
           )}
 
-          {events.slice(0, 6).map(e => (
-            <div
-              key={e.id}
-              role="button"
-              tabIndex={0}
-              className="py-4 px-5 bg-ctrl-panel border border-ctrl-border mb-2.5 transition-all duration-200 hover:border-ctrl-border2 cursor-pointer max-[900px]:py-4 max-[900px]:px-4 max-[900px]:mb-3"
-              onClick={() => setSelectedEvent(e)}
-              onKeyDown={ev => {
-                if (ev.key === 'Enter' || ev.key === ' ') {
-                  ev.preventDefault()
-                  setSelectedEvent(e)
-                }
-              }}
-            >
-              <div className="flex items-center justify-between gap-2 mb-2">
-                <div className="font-mono text-[11px] text-ctrl-accent tracking-wide max-[900px]:text-xs">{e.date}{e.time && ` · ${e.time}`}</div>
-                <span className={eventTypeCls[e.type] || eventTypeCls.event}>{e.type === 'event' ? 'AKCE' : e.type === 'deadline' ? 'DEADLINE' : 'SCHŮZKA'}</span>
-              </div>
-              <div className="min-w-0">
-                <div className="text-[13px] font-semibold leading-snug max-[900px]:text-sm">{e.title}</div>
-                {e.description && <div className="text-xs text-ctrl-text2 mt-1.5 leading-relaxed max-[900px]:text-[13px]">{e.description}</div>}
-              </div>
-            </div>
-          ))}
-          {events.length === 0 && <div className="text-ctrl-text2 text-xs py-2">Žádné nadcházející akce.</div>}
+          <EventsCalendar events={events} onSelectEvent={setSelectedEvent} />
         </section>
       </div>
 
