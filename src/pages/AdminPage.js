@@ -253,7 +253,7 @@ export function AdminPage() {
         <Sec className="!mb-0">ADMIN PANEL</Sec>
         {fullAdmin ? (
           <span className="bg-ctrl-danger text-white font-mono text-[9px] py-0.5 px-2 tracking-wide">
-            POUZE ADMIN
+            ADMIN
           </span>
         ) : (
           <span className="bg-ctrl-info text-white font-mono text-[9px] py-0.5 px-2 tracking-wide">
@@ -416,7 +416,7 @@ export function AdminPage() {
         </div>
       )}
 
-      {fullAdmin && activeTab === "stats" && (
+      {activeTab === "stats" && (
         <div>
           <div className="grid grid-cols-4 gap-3 mb-3 max-[900px]:grid-cols-2 max-[900px]:gap-2">
             <StatMetric
@@ -839,7 +839,7 @@ export function AdminPage() {
         </div>
       )}
 
-      {fullAdmin && activeTab === "add" && (
+      {activeTab === "add" && (
         <div className="bg-ctrl-panel border border-ctrl-warning p-4 mb-3.5 animate-fade-in max-[900px]:p-3.5">
           <Sec>JAK PŘIDAT ČLENA</Sec>
           <div className="text-xs text-ctrl-text2 leading-[1.8] font-mono max-[900px]:text-[11px] max-[900px]:leading-[1.7]">
