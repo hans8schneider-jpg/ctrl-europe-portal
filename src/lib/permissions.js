@@ -25,7 +25,7 @@ export const DEVELOPERS_BUCKET = "Developeři";
 
 /** Admin a vedoucí všude; developer jen v buňce Developeři */
 export const canAddTasks = (layer, bucket = null) => {
-  if (["admin", "vedouci"].includes(layer)) return true;
+  if (["admin", "vedouci", "developer"].includes(layer)) return true;
   if (layer === "developer" && bucket === DEVELOPERS_BUCKET) return true;
   return false;
 };
@@ -127,7 +127,9 @@ export const getAccessibleBuckets = (profile) => {
 /** Buňky, které může uživatel otevřít (navigace, stránka buňky). */
 export const getBrowsableBuckets = (profile) => {
   if (!profile) return [];
-  if (profile.layer === "admin") return ALL_BUCKETS;
+  if (profile.layer === "admin" || profile.layer === "developer")
+    return ALL_BUCKETS;
+
   if (hasAllTeamBucketAccess(profile)) return ALL_BUCKETS;
   return getAccessibleBuckets(profile);
 };
