@@ -155,7 +155,7 @@ export function Tasks({
       : null
     : activeBucket || profile.bucket
 
-  const canAdd = canAddTasks(profile.layer, bucketScope || activeBucket)
+  const canAdd = canAddTasks(profile, bucketScope || activeBucket)
 
   const visibleTasks = filterTasksForViewer(tasks, profile, {
     bucket: bucketScope,

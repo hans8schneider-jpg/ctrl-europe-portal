@@ -6,7 +6,45 @@ import {
 } from "../constants/buckets";
 import { roleBadgeCls } from "../constants/roles";
 
-/** Předsednictvo apod. v týmové buňce → štítek „Člen · {buňka}“ */
+/** Pořadí membership layer pro odvozování efektivní vrstvy (sestupně). */
+const MEMBERSHIP_LAYERS_BY_RANK = [
+  "predsednictvo",
+  "zastupce_predsednictva",
+  "vedouci",
+  "clen",
+];
+
+/**
+ * Vrátí nejvyšší bucket-level layer z pole členství.
+ * Používá se pro odvozování efektivní vrstvy u běžných členů.
+ */
+export const getHighestMembershipLayer = (memberships) => {
+  if (!memberships?.length) return null;
+  return (
+    MEMBERSHIP_LAYERS_BY_RANK.find((l) => memberships.some((m) => m.layer === l)) ??
+    null
+  );
+};
+
+/**
+ * Vrátí efektivní layer profilu pro zobrazovací a per-kompatibilní účely.
+ * Globální role (admin/developer/pozorovatel) mají přednost.
+ * Pro běžné členy se layer odvozuje z nejvyššího členství.
+ */
+export const getEffectiveLayer = (profile) => {
+  if (!profile) return null;
+  if (profile.layer) return profile.layer;
+  return getHighestMembershipLayer(profile.memberships);
+};
+
+/**
+ * Vrátí layer uživatele v konkrétní buňce.
+ * Null pokud v dané buňce není členem.
+ */
+export const getLayerInBucket = (profile, bucket) =>
+  profile?.memberships?.find((m) => m.bucket === bucket)?.layer ?? null;
+
+/** Předsednictvo apod. v týmové buňce → štítek „Člen · {buňka}" */
 const LAYERS_WITH_CLEN_TEAM_MEMBERSHIP = [
   "admin",
   "developer",
@@ -23,29 +61,48 @@ export const getTeamBucketBadgeDisplay = (memberLayer, bucket) => {
 
 export const DEVELOPERS_BUCKET = "Developeři";
 
-/** Admin a vedoucí všude; developer jen v buňce Developeři */
-export const canAddTasks = (layer, bucket = null) => {
-  if (["admin", "vedouci", "developer"].includes(layer)) return true;
-  if (layer === "developer" && bucket === DEVELOPERS_BUCKET) return true;
-  return false;
+/**
+ * Může uživatel přidávat úkoly?
+ * Přijímá profil (nebo string layer pro zpětnou kompatibilitu).
+ * S konkrétní buňkou provede per-bucket kontrolu přes členství.
+ */
+export const canAddTasks = (profileOrLayer, bucket = null) => {
+  if (typeof profileOrLayer === "string") {
+    const layer = profileOrLayer;
+    return ["admin", "vedouci", "developer"].includes(layer);
+  }
+  const profile = profileOrLayer;
+  if (!profile) return false;
+  const layer = getEffectiveLayer(profile);
+  if (["admin", "developer"].includes(layer)) return true;
+  const memberships = profile.memberships ?? [];
+  if (bucket) {
+    return memberships.some((m) => m.bucket === bucket && m.layer === "vedouci");
+  }
+  return memberships.some((m) => m.layer === "vedouci");
 };
+
 /** Sloupec profiles.can_see_all_buckets — vidí všechny buňky (týmové i orgány). */
 export const canSeeAllBuckets = (profile) =>
   Boolean(profile?.can_see_all_buckets);
 
 /** Stejný přístup ke všem buňkám jako developer (navigace, stránka buňky). */
 export const hasAllTeamBucketAccess = (profile) =>
-  profile?.layer === "developer" || canSeeAllBuckets(profile);
+  getEffectiveLayer(profile) === "developer" || canSeeAllBuckets(profile);
+
 export const canObserveAll = (role) =>
   ["admin", "pozorovatel", "developer"].includes(role);
+
 export const isAdmin = (role) => role === "admin";
 export const isDeveloper = (role) => role === "developer";
+
 export const canAccessAdminPanel = (profile) => {
   if (!profile) return false;
-  const layer = typeof profile === "string" ? profile : profile.layer;
+  const layer = getEffectiveLayer(profile);
   if (["admin", "developer"].includes(layer)) return true;
   return typeof profile === "object" && canSeeAllBuckets(profile);
 };
+
 /** Oznámení na dashboardu (kalendář akcí jen admin) */
 export const canManageNews = (role) => ["admin", "developer"].includes(role);
 
@@ -56,39 +113,53 @@ export const canSeeMemberOrganBuckets = (layer) =>
   );
 
 /** Textová role v buňce (profiles.role) — člen/vedoucí/pozorovatel jen u člena a vedoucího */
-export const canSeeMemberBucketRole = (viewerLayer, memberLayer) => {
+export const canSeeMemberBucketRole = (viewerLayer, memberEffectiveLayer) => {
   if (canSeeMemberOrganBuckets(viewerLayer)) return true;
-  return ["clen", "vedouci"].includes(memberLayer);
+  return ["clen", "vedouci"].includes(memberEffectiveLayer);
 };
 
-const profileBuckets = (p) => [p?.bucket, p?.secondary_bucket].filter(Boolean);
+/** Vrátí všechny buňky profilů z pole členství (nebo fallback na staré pole). */
+const profileBucketList = (p) =>
+  p?.memberships?.map((m) => m.bucket) ??
+  [p?.bucket, p?.secondary_bucket].filter(Boolean);
 
 export const memberSharesBucketWith = (viewer, member) => {
-  const viewerBuckets = profileBuckets(viewer);
-  const memberBuckets = profileBuckets(member);
+  const viewerBuckets = profileBucketList(viewer);
+  const memberBuckets = profileBucketList(member);
   return viewerBuckets.some((b) => memberBuckets.includes(b));
 };
 
-/** Textová role v buňce (profiles.role) — ne člen/pozorovatel; vedoucí jen ve své buňce */
+/**
+ * Textová role v buňce (profiles.role) — ne člen/pozorovatel;
+ * vedoucí jen pokud sdílí buňku, kde je skutečně vedoucí.
+ */
 export const canEditMemberBucketRole = (viewer, member) => {
   if (!viewer || !member || viewer.id === member.id) return false;
-  if (["clen", "pozorovatel"].includes(viewer.layer)) return false;
+  const viewerLayer = getEffectiveLayer(viewer);
+  if (["clen", "pozorovatel"].includes(viewerLayer)) return false;
   if (
     ["admin", "developer", "predsednictvo", "zastupce_predsednictva"].includes(
-      viewer.layer,
+      viewerLayer,
     )
   ) {
     return true;
   }
-  if (viewer.layer === "vedouci") return memberSharesBucketWith(viewer, member);
+  if (viewerLayer === "vedouci") {
+    // Může editovat role pouze v buňkách, kde je skutečně vedoucí
+    const viewerLeaderBuckets = (viewer.memberships ?? [])
+      .filter((m) => m.layer === "vedouci")
+      .map((m) => m.bucket);
+    const memberBuckets = profileBucketList(member);
+    return viewerLeaderBuckets.some((b) => memberBuckets.includes(b));
+  }
   return false;
 };
 
-export function getMemberBucketsForDisplay(member, viewerLayer) {
-  const assigned = [member.bucket, member.secondary_bucket].filter(Boolean);
-  const teamBuckets = assigned.filter((b) => TEAM_BUCKETS.includes(b));
-  const organBuckets = assigned.filter((b) => SPECIAL_BUCKETS.includes(b));
-  const showOrgan = canSeeMemberOrganBuckets(viewerLayer);
+export function getMemberBucketsForDisplay(member, viewerEffectiveLayer) {
+  const allBuckets = profileBucketList(member);
+  const teamBuckets = allBuckets.filter((b) => TEAM_BUCKETS.includes(b));
+  const organBuckets = allBuckets.filter((b) => SPECIAL_BUCKETS.includes(b));
+  const showOrgan = canSeeMemberOrganBuckets(viewerEffectiveLayer);
   const visibleOrgan = showOrgan ? organBuckets : [];
   const visible = [...teamBuckets, ...visibleOrgan];
 
@@ -97,8 +168,6 @@ export function getMemberBucketsForDisplay(member, viewerLayer) {
     if (visibleOrgan.length) return visibleOrgan[0];
     const primary = member.bucket;
     if (primary && !SPECIAL_BUCKETS.includes(primary)) return primary;
-    const secondary = member.secondary_bucket;
-    if (secondary && !SPECIAL_BUCKETS.includes(secondary)) return secondary;
     return null;
   };
 
@@ -112,24 +181,43 @@ export function getMemberBucketsForDisplay(member, viewerLayer) {
 
 export const getAccessibleBuckets = (profile) => {
   if (!profile) return [];
-  const { layer, bucket, secondary_bucket } = profile;
+  const layer = getEffectiveLayer(profile);
   if (layer === "admin") return ALL_BUCKETS;
   if (layer === "pozorovatel") return TEAM_BUCKETS;
-  const buckets = [bucket];
-  if (secondary_bucket) buckets.push(secondary_bucket);
-  if (layer === "vedouci") buckets.push("Rada zástupců");
-  if (canSeeMemberOrganBuckets(layer)) buckets.push("Developeři");
-  if (layer === "predsednictvo" || layer === "zastupce_predsednictva")
+
+  const memberships = profile.memberships ?? [];
+  const buckets = memberships.map((m) => m.bucket);
+
+  // Vedoucí v jakékoli buňce → přístup do Rady zástupců
+  if (memberships.some((m) => m.layer === "vedouci")) {
+    buckets.push("Rada zástupců");
+  }
+  // Předsednictvo/developer → přístup do Developeři
+  if (
+    layer === "developer" ||
+    memberships.some((m) =>
+      canSeeMemberOrganBuckets(m.layer),
+    )
+  ) {
+    buckets.push("Developeři");
+  }
+  // Předsednictvo / zástupce → přístup do Předsednictvo
+  if (
+    memberships.some((m) =>
+      ["predsednictvo", "zastupce_predsednictva"].includes(m.layer),
+    )
+  ) {
     buckets.push("Předsednictvo");
+  }
+
   return [...new Set(buckets)];
 };
 
 /** Buňky, které může uživatel otevřít (navigace, stránka buňky). */
 export const getBrowsableBuckets = (profile) => {
   if (!profile) return [];
-  if (profile.layer === "admin" || profile.layer === "developer")
-    return ALL_BUCKETS;
-
+  const layer = getEffectiveLayer(profile);
+  if (layer === "admin" || layer === "developer") return ALL_BUCKETS;
   if (hasAllTeamBucketAccess(profile)) return ALL_BUCKETS;
   return getAccessibleBuckets(profile);
 };

@@ -5,7 +5,7 @@ import { bucketLeaderRingCls, bucketMemberAvCls } from '../constants/buckets'
 import { StatusBadge } from './StatusBadge'
 
 const isBucketLeader = (member, bucket) =>
-  member.layer === 'vedouci' && member.bucket === bucket
+  (member.memberships ?? []).some(m => m.bucket === bucket && m.layer === 'vedouci')
 
 const firstName = (name) => name?.trim().split(/\s+/)[0] || '—'
 

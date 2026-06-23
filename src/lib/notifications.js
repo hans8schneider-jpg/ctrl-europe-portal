@@ -9,7 +9,8 @@ export function notificationVisibleToProfile(notification, profile) {
   }
   const target = notification.bucket_target
   if (!target || target === 'all') return true
-  const buckets = [profile.bucket, profile.secondary_bucket].filter(Boolean)
+  const buckets = (profile.memberships ?? []).map(m => m.bucket)
+  if (!buckets.length && profile.bucket) buckets.push(profile.bucket)
   return buckets.includes(target)
 }
 

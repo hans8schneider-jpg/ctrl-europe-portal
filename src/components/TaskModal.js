@@ -48,7 +48,7 @@ export function TaskModal({
   const [metaSaving, setMetaSaving] = useState(false)
   const [metaError, setMetaError] = useState(null)
 
-  const canManage = canManageTasks(profile?.layer, task?.bucket_target || activeBucket)
+  const canManage = canManageTasks(profile, task?.bucket_target || activeBucket)
   const canComment = profile?.layer !== 'pozorovatel'
   const canToggle = canComment
 

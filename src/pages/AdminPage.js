@@ -127,8 +127,9 @@ function MemberStatsCard({ member: m, onSelect, pills, footer }) {
             {m.name}
           </div>
           <div className="font-mono text-[10px] text-ctrl-text2 mt-0.5 truncate">
-            {m.bucket}
-            {m.secondary_bucket && ` + ${m.secondary_bucket}`}
+            {(m.memberships ?? []).length > 0
+              ? (m.memberships ?? []).map((mm) => mm.bucket).join(" + ")
+              : m.bucket}
           </div>
           <div className="font-mono text-[9px] text-ctrl-text3 mt-0.5">
             {ROLE_LABELS[m.layer] || m.layer}
@@ -194,7 +195,9 @@ export function AdminPage() {
   }, [activeTab]);
 
   const bucketStats = ALL_BUCKETS.map((bucket) => {
-    const bucketMembers = members.filter((m) => m.bucket === bucket);
+    const bucketMembers = members.filter((m) =>
+      (m.memberships ?? []).some((mm) => mm.bucket === bucket),
+    );
     const active = bucketMembers.filter(
       (m) => m.last_seen && new Date() - new Date(m.last_seen) < 86400000 * 7,
     );
@@ -230,13 +233,16 @@ export function AdminPage() {
     const q = nameQuery.trim().toLowerCase();
     return members.filter((m) => {
       if (q && !m.name?.toLowerCase().includes(q)) return false;
-      if (
-        bucketFilter &&
-        m.bucket !== bucketFilter &&
-        m.secondary_bucket !== bucketFilter
-      )
-        return false;
-      if (layerFilter && m.layer !== layerFilter) return false;
+      if (bucketFilter) {
+        const inBucket = (m.memberships ?? []).some((mm) => mm.bucket === bucketFilter);
+        if (!inBucket) return false;
+      }
+      if (layerFilter) {
+        const hasLayer =
+          m.layer === layerFilter ||
+          (m.memberships ?? []).some((mm) => mm.layer === layerFilter);
+        if (!hasLayer) return false;
+      }
       return true;
     });
   }, [members, nameQuery, bucketFilter, layerFilter]);
@@ -388,8 +394,10 @@ export function AdminPage() {
                     {m.name}
                   </div>
                   <div className="font-mono text-[10px] text-ctrl-text2 mt-0.5 leading-relaxed max-[900px]:text-[11px] max-[900px]:mt-1">
-                    {m.role} · {m.bucket}
-                    {m.secondary_bucket && ` + ${m.secondary_bucket}`}
+                    {m.role} ·{" "}
+                    {(m.memberships ?? []).length > 0
+                      ? (m.memberships ?? []).map((mm) => mm.bucket).join(" + ")
+                      : m.bucket}
                   </div>
                 </div>
               </div>
@@ -532,7 +540,8 @@ export function AdminPage() {
                           </div>
                         </td>
                         <td className="py-2.5 pr-3 font-mono text-[11px] text-ctrl-text2">
-                          {m.bucket}
+                          {(m.memberships ?? []).find((mm) => mm.is_primary)
+                            ?.bucket ?? m.bucket}
                         </td>
                         <td
                           className={cn(
@@ -647,7 +656,8 @@ export function AdminPage() {
                             </div>
                           </td>
                           <td className="py-2.5 pr-3 font-mono text-[11px] text-ctrl-text2">
-                            {m.bucket}
+                            {(m.memberships ?? []).find((mm) => mm.is_primary)
+                              ?.bucket ?? m.bucket}
                           </td>
                           <td className="py-2.5 pr-3 font-mono text-[11px] text-right text-ctrl-success font-bold">
                             {completed7d}
@@ -830,8 +840,8 @@ export function AdminPage() {
                     {r.message}
                   </p>
                   <div className="font-mono text-[10px] text-ctrl-text3 tracking-wide max-[900px]:text-[9px]">
-                    {author ? author.name : "Neznámý člen"}
-                    {author?.bucket && ` · ${author.bucket}`}
+                  {author ? author.name : "Neznámý člen"}
+                  {author?.bucket && ` · ${author.bucket}`}
                   </div>
                 </div>
               );
@@ -853,24 +863,35 @@ export function AdminPage() {
               Zkopíruj UUID nového uživatele
             </div>
             <div className="text-ctrl-warning mb-2">
-              Krok 2 — Supabase → SQL Editor → spusť:
+              Krok 2 — Supabase → SQL Editor → vytvoř profil:
             </div>
             <div className="bg-ctrl-bg2 p-3 text-ctrl-success text-[11px] leading-loose border-l-2 border-l-ctrl-accent overflow-x-auto max-[900px]:p-2.5 max-[900px]:text-[10px]">
-              INSERT INTO profiles (id, name, role, bucket, layer,
-              secondary_bucket)
+              INSERT INTO profiles (id, name, role)
               <br />
               VALUES (<br />
               &nbsp;&nbsp;'UUID-sem',
               <br />
               &nbsp;&nbsp;'Jméno Příjmení',
               <br />
-              &nbsp;&nbsp;'Role v týmu',
+              &nbsp;&nbsp;'Role v týmu'
+              <br />
+              );
+            </div>
+            <div className="text-ctrl-warning mt-4 mb-2">
+              Krok 3 — Přidej členství (opakuj pro každou buňku):
+            </div>
+            <div className="bg-ctrl-bg2 p-3 text-ctrl-success text-[11px] leading-loose border-l-2 border-l-ctrl-accent overflow-x-auto max-[900px]:p-2.5 max-[900px]:text-[10px]">
+              INSERT INTO profile_memberships (profile_id, bucket, layer,
+              is_primary)
+              <br />
+              VALUES (<br />
+              &nbsp;&nbsp;'UUID-sem',
               <br />
               &nbsp;&nbsp;'Primární buňka',
               <br />
-              &nbsp;&nbsp;'clen',
+              &nbsp;&nbsp;'clen', -- vedouci / predsednictvo / zastupce_predsednictva
               <br />
-              &nbsp;&nbsp;NULL -- nebo 'Předsednictvo' pro dual membership
+              &nbsp;&nbsp;true -- false pro sekundární buňky
               <br />
               );
             </div>
@@ -879,8 +900,11 @@ export function AdminPage() {
               supabase/profiles-profile-id.sql.
             </div>
             <div className="text-ctrl-text2 mt-1 text-[11px]">
-              Dostupné vrstvy: admin · developer · predsednictvo ·
-              zastupce_predsednictva · vedouci · clen · pozorovatel
+              Globální vrstvy na profiles.layer: admin · developer · pozorovatel
+            </div>
+            <div className="text-ctrl-text2 mt-0.5 text-[11px]">
+              Buňkové vrstvy v profile_memberships.layer: predsednictvo ·
+              zastupce_predsednictva · vedouci · clen
             </div>
           </div>
         </div>

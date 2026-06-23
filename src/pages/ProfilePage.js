@@ -16,6 +16,7 @@ import {
   canAddTasks,
   canManageNews,
   canSeeAllBuckets,
+  getEffectiveLayer,
   isAdmin,
   isDeveloper,
 } from "../lib/permissions";
@@ -32,7 +33,7 @@ const panelCls =
 const profileIdInputCls =
   "w-full bg-ctrl-bg2 border border-ctrl-border text-ctrl-text py-[9px] px-3 text-[13px] font-sans outline-none transition-all duration-200 focus:border-ctrl-accent focus:shadow-[0_0_0_2px_rgba(42,107,255,0.1)]";
 
-function BucketRow({ label, bucket, isOrgan }) {
+function BucketRow({ bucket, layer, isPrimary, isOrgan }) {
   if (!bucket) return null;
   return (
     <div className="flex items-center gap-2.5 py-2 px-2.5 -mx-2.5 bg-ctrl-bg2/40 border border-transparent hover:border-ctrl-border transition-colors">
@@ -41,20 +42,27 @@ function BucketRow({ label, bucket, isOrgan }) {
       />
       <div className="flex-1 min-w-0">
         <div className="font-mono text-[9px] tracking-[2px] uppercase text-ctrl-text2 mb-0.5">
-          {label}
+          {isPrimary ? "Primární buňka" : "Buňka"}
         </div>
         <div className="text-[13px] font-medium truncate">{bucket}</div>
       </div>
-      {isOrgan && (
-        <span
-          className={cn(
-            "font-mono text-[8px] py-0.5 px-1.5 tracking-[1.5px] uppercase shrink-0 border border-current/25",
-            bucketOrganBadgeCls(bucket),
-          )}
-        >
-          ORG
-        </span>
-      )}
+      <div className="flex items-center gap-1 shrink-0">
+        {layer && (
+          <span className="font-mono text-[8px] py-0.5 px-1.5 tracking-[1px] uppercase text-ctrl-text3 bg-ctrl-bg2 border border-ctrl-border">
+            {layer}
+          </span>
+        )}
+        {isOrgan && (
+          <span
+            className={cn(
+              "font-mono text-[8px] py-0.5 px-1.5 tracking-[1.5px] uppercase border border-current/25",
+              bucketOrganBadgeCls(bucket),
+            )}
+          >
+            ORG
+          </span>
+        )}
+      </div>
     </div>
   );
 }
@@ -80,24 +88,26 @@ export function ProfilePage() {
   const online = isUserOnline(profile.last_seen);
   const [statusSaving, setStatusSaving] = useState(false);
 
+  const effectiveLayer = getEffectiveLayer(profile);
+
   const permissions = useMemo(
     () =>
       [
         "Dashboard",
-        canManageNews(profile.layer) && "Správa oznámení",
-        profile.layer !== "pozorovatel" && "Chat v buňce",
-        profile.layer !== "pozorovatel" && "Označování úkolů",
-        canAddTasks(profile.layer) && "Přidávání úkolů",
-        isDeveloper(profile.layer) && "Přidávání úkolů v buňce Developeři",
+        canManageNews(effectiveLayer) && "Správa oznámení",
+        effectiveLayer !== "pozorovatel" && "Chat v buňce",
+        effectiveLayer !== "pozorovatel" && "Označování úkolů",
+        canAddTasks(profile) && "Přidávání úkolů",
+        isDeveloper(effectiveLayer) && "Přidávání úkolů v buňce Developeři",
         canSeeAllBuckets(profile) && "Viditelnost všech buněk",
-        isAdmin(profile.layer) && "Admin panel",
+        isAdmin(effectiveLayer) && "Admin panel",
         canAccessAdminPanel(profile) &&
-          !isAdmin(profile.layer) &&
+          !isAdmin(effectiveLayer) &&
           "Admin panel — reporty a členové",
-        isAdmin(profile.layer) && "Správa všech buněk",
-        profile.layer === "pozorovatel" && "Čtení všech buněk",
+        isAdmin(effectiveLayer) && "Správa všech buněk",
+        effectiveLayer === "pozorovatel" && "Čtení všech buněk",
       ].filter(Boolean),
-    [profile.layer, profile.can_see_all_buckets],
+    [profile, effectiveLayer],
   );
 
   const updateStatus = async (newStatus) => {
@@ -212,10 +222,10 @@ export function ProfilePage() {
               <span
                 className={cn(
                   "inline-block font-mono text-[9px] py-1 px-2.5 tracking-[2px] uppercase",
-                  roleBadgeCls(profile.layer),
+                  roleBadgeCls(effectiveLayer),
                 )}
               >
-                {ROLE_LABELS[profile.layer] || profile.layer}
+                {ROLE_LABELS[effectiveLayer] || effectiveLayer}
               </span>
               {profile.role && (
                 <div className="mt-2 font-mono text-[10px] text-ctrl-text2 tracking-wide">
@@ -234,16 +244,21 @@ export function ProfilePage() {
           </div>
 
           <div className="p-5 space-y-1">
-            <BucketRow
-              label="Buňka"
-              bucket={profile.bucket}
-              isOrgan={SPECIAL_BUCKETS.includes(profile.bucket)}
-            />
-            {profile.secondary_bucket && (
+            {(profile.memberships ?? []).length > 0 ? (
+              (profile.memberships ?? []).map((m) => (
+                <BucketRow
+                  key={m.id ?? m.bucket}
+                  bucket={m.bucket}
+                  layer={m.layer}
+                  isPrimary={m.is_primary}
+                  isOrgan={SPECIAL_BUCKETS.includes(m.bucket)}
+                />
+              ))
+            ) : (
               <BucketRow
-                label="Sekundární buňka"
-                bucket={profile.secondary_bucket}
-                isOrgan={SPECIAL_BUCKETS.includes(profile.secondary_bucket)}
+                bucket={profile.bucket}
+                isPrimary
+                isOrgan={SPECIAL_BUCKETS.includes(profile.bucket)}
               />
             )}
 

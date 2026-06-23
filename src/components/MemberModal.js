@@ -10,6 +10,7 @@ import { getStatusMeta } from '../constants/status'
 import {
   canEditMemberBucketRole,
   canSeeMemberBucketRole,
+  getEffectiveLayer,
   getMemberBucketsForDisplay,
   getTeamBucketBadgeDisplay,
 } from '../lib/permissions'
@@ -43,8 +44,10 @@ export function MemberModal({ member, tasks, onClose }) {
 
   if (!member || !liveMember) return null
 
+  const memberEffectiveLayer = getEffectiveLayer(liveMember)
+  const viewerEffectiveLayer = getEffectiveLayer(profile)
   const canSeeRole =
-    profile && canSeeMemberBucketRole(profile.layer, liveMember.layer)
+    profile && canSeeMemberBucketRole(viewerEffectiveLayer, memberEffectiveLayer)
   const canEditRole =
     canSeeRole && profile && canEditMemberBucketRole(profile, liveMember)
 
@@ -82,16 +85,16 @@ export function MemberModal({ member, tasks, onClose }) {
     return `Aktivní ${suffix}`
   })()
 
-  const roleLabel = ROLE_LABELS[liveMember.layer] || liveMember.layer
+  const roleLabel = ROLE_LABELS[memberEffectiveLayer] || memberEffectiveLayer
   const memberStatus = liveMember.status || 'active'
   const statusMeta = getStatusMeta(memberStatus)
   const { teamBuckets, organBuckets, avatarBucket } =
-    getMemberBucketsForDisplay(liveMember, profile?.layer)
+    getMemberBucketsForDisplay(liveMember, viewerEffectiveLayer)
 
   const primaryTeam = teamBuckets[0]
   const extraTeamBuckets = teamBuckets.slice(1)
   const mergeRoleWithTeam =
-    primaryTeam && ['vedouci', 'clen'].includes(liveMember.layer)
+    primaryTeam && ['vedouci', 'clen'].includes(memberEffectiveLayer)
   const primaryOrgan = organBuckets[0]
   const extraOrganBuckets = organBuckets.slice(1)
   const mergeOrganWithRole = Boolean(primaryOrgan && !mergeRoleWithTeam)
@@ -152,7 +155,7 @@ export function MemberModal({ member, tasks, onClose }) {
                 </span>
                 {!mergeRoleWithTeam &&
                   teamBuckets.map(b => {
-                    const teamBadge = getTeamBucketBadgeDisplay(liveMember.layer, b)
+                    const teamBadge = getTeamBucketBadgeDisplay(memberEffectiveLayer, b)
                     return (
                       <span key={b} className={cn(badgeCls, teamBadge.className)}>
                         {teamBadge.label}
@@ -161,7 +164,7 @@ export function MemberModal({ member, tasks, onClose }) {
                   })}
                 {mergeRoleWithTeam &&
                   extraTeamBuckets.map(b => {
-                    const teamBadge = getTeamBucketBadgeDisplay(liveMember.layer, b)
+                    const teamBadge = getTeamBucketBadgeDisplay(memberEffectiveLayer, b)
                     return (
                       <span key={b} className={cn(badgeCls, teamBadge.className)}>
                         {teamBadge.label}

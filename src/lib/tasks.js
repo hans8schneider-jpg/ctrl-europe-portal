@@ -1,4 +1,4 @@
-import { DEVELOPERS_BUCKET, canAddTasks, isAdmin } from './permissions'
+import { DEVELOPERS_BUCKET, canAddTasks, getEffectiveLayer, isAdmin } from './permissions'
 
 export const PRIORITY_LABELS = {
   low: 'Nízká',
@@ -23,23 +23,25 @@ export function getMyAssignedOpenTasks(tasks, profile) {
     })
 }
 
-export const canManageTasks = (layer, bucket = null) => canAddTasks(layer, bucket)
+/** Přijímá profil nebo string layer (zpětná kompatibilita). */
+export const canManageTasks = (profileOrLayer, bucket = null) =>
+  canAddTasks(profileOrLayer, bucket)
 
+/** Je member vedoucí dané buňky? Kontroluje přes memberships. */
 const isBucketLeader = (member, bucket) =>
-  member.layer === 'vedouci' && member.bucket === bucket
+  (member.memberships ?? []).some(m => m.bucket === bucket && m.layer === 'vedouci')
 
 export function getBucketMembers(members, bucket) {
   if (!bucket || bucket === 'all') return members || []
   if (bucket === DEVELOPERS_BUCKET) {
-    return (members || []).filter(
-      m =>
-        m.layer === 'developer' ||
-        m.bucket === bucket ||
-        m.secondary_bucket === bucket
-    )
+    return (members || []).filter(m => {
+      const layer = getEffectiveLayer(m)
+      if (layer === 'developer') return true
+      return (m.memberships ?? []).some(mm => mm.bucket === bucket)
+    })
   }
   return (members || []).filter(
-    m => m.bucket === bucket || m.secondary_bucket === bucket
+    m => (m.memberships ?? []).some(mm => mm.bucket === bucket)
   )
 }
 
@@ -69,10 +71,13 @@ export function assigneePayload(assigneeId, members) {
   return { assignee_id: assigneeId, assignee: m?.name || null }
 }
 
+/** Je profil vedoucí dané buňky? Kontroluje přes memberships. */
 export function isVedouciOfBucket(profile, bucket) {
   if (!profile || !bucket || bucket === 'all') return false
-  if (profile.layer !== 'vedouci') return false
-  return profile.bucket === bucket || profile.secondary_bucket === bucket
+  if (isAdmin(getEffectiveLayer(profile))) return false
+  return (profile.memberships ?? []).some(
+    m => m.bucket === bucket && m.layer === 'vedouci'
+  )
 }
 
 export function isTaskAssignee(task, profile) {
@@ -88,10 +93,10 @@ export function canViewerSeeTask(task, viewer) {
   if (!task || !viewer) return false
   if (task.done) return true
   if (!task.assignee_id) return true
-  if (isAdmin(viewer.layer)) return true
+  if (isAdmin(getEffectiveLayer(viewer))) return true
   if (isTaskAssignee(task, viewer)) return true
   if (isVedouciOfBucket(viewer, task.bucket_target)) return true
-  if (viewer.layer === 'developer' && task.bucket_target === DEVELOPERS_BUCKET) return true
+  if (getEffectiveLayer(viewer) === 'developer' && task.bucket_target === DEVELOPERS_BUCKET) return true
   return false
 }
 
@@ -107,7 +112,7 @@ export function getTaskBucket(task, fallbackBucket) {
   return fallbackBucket || null
 }
 
-/** Volný štítek — prázdný / „other“ se neukazuje. */
+/** Volný štítek — prázdný / „other" se neukazuje. */
 export function normalizeTaskTag(tag) {
   if (tag == null) return null
   const t = String(tag).trim()

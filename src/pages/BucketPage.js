@@ -29,11 +29,12 @@ export function BucketPage() {
 
   if (!bucket) return <Navigate to="/bunky" replace />
 
-  const bucketMembers = members.filter(m =>
-    bucket === DEVELOPERS_BUCKET
-      ? m.layer === 'developer' || m.bucket === bucket || m.secondary_bucket === bucket
-      : m.bucket === bucket || m.secondary_bucket === bucket
-  )
+  const bucketMembers = members.filter(m => {
+    if (bucket === DEVELOPERS_BUCKET) {
+      return m.layer === 'developer' || (m.memberships ?? []).some(mm => mm.bucket === bucket)
+    }
+    return (m.memberships ?? []).some(mm => mm.bucket === bucket)
+  })
   const onlineCount = bucketMembers.filter(m => isUserOnline(m.last_seen)).length
 
   return (

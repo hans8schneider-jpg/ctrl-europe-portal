@@ -16,7 +16,7 @@ const VIEWPORT_PAD = 8
 const HEADER_OFFSET = 58
 
 const isBucketLeader = (member, bucket) =>
-  member.layer === 'vedouci' && member.bucket === bucket
+  (member.memberships ?? []).some(m => m.bucket === bucket && m.layer === 'vedouci')
 
 const sortBucketMembers = (list, bucket) =>
   [...list].sort((a, b) => {
@@ -114,7 +114,7 @@ export function BucketsPage() {
 
   const openMenuBucketMembers = openMenuBucket
     ? sortBucketMembers(
-        members.filter(m => m.bucket === openMenuBucket || m.secondary_bucket === openMenuBucket),
+        members.filter(m => (m.memberships ?? []).some(mm => mm.bucket === openMenuBucket)),
         openMenuBucket
       )
     : []
@@ -137,7 +137,7 @@ export function BucketsPage() {
               !t.done &&
               canViewerSeeTask(t, profile)
           )
-          const bucketMembers = members.filter(m => m.bucket === bucket || m.secondary_bucket === bucket)
+          const bucketMembers = members.filter(m => (m.memberships ?? []).some(mm => mm.bucket === bucket))
           const isSpecial = SPECIAL_BUCKETS.includes(bucket)
           const menuOpen = openMenuBucket === bucket
 

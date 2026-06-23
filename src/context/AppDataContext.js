@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import { supabase } from '../supabase'
-import { canAccessAdminPanel, isAdmin } from '../lib/permissions'
+import { canAccessAdminPanel, getEffectiveLayer, getHighestMembershipLayer, isAdmin } from '../lib/permissions'
 import { canViewerSeeTask } from '../lib/tasks'
 import { applyBucketRows } from '../constants/buckets'
 import {
@@ -21,6 +21,26 @@ function readLastSeenTouchTs(storageKey) {
     return Number.isFinite(parsed) ? parsed : 0
   } catch {
     return 0
+  }
+}
+
+/**
+ * Obohatí profil o:
+ * - memberships: pole z profile_memberships
+ * - bucket: primární buňka (z is_primary členství)
+ * - layer: efektivní layer (globální role NEBO nejvyšší membership layer)
+ */
+function enrichProfile(p) {
+  if (!p) return p
+  const memberships = p.profile_memberships || []
+  const primary = memberships.find(m => m.is_primary)
+  const globalLayer = p.layer  // admin, developer, pozorovatel, nebo null
+  const derivedLayer = globalLayer || getHighestMembershipLayer(memberships)
+  return {
+    ...p,
+    memberships,
+    bucket: primary?.bucket ?? p.bucket ?? null,
+    layer: derivedLayer,
   }
 }
 
@@ -114,23 +134,23 @@ export function AppDataProvider({ session, children }) {
         { data: memberData },
         { data: bucketData },
       ] = await Promise.all([
-        supabase.from('profiles').select('*').eq('id', session.user.id).single(),
+        supabase.from('profiles').select('*, profile_memberships(*)').eq('id', session.user.id).single(),
         supabase.from('tasks').select('*').order('created_at', { ascending: false }),
         supabase.from('news').select('*').order('created_at', { ascending: false }).limit(20),
         supabase.from('events').select('*').order('date', { ascending: false }),
-        supabase.from('profiles').select('*').order('name'),
+        supabase.from('profiles').select('*, profile_memberships(*)').order('name'),
         supabase.from('buckets').select('*').eq('is_active', true).order('sort_order', { ascending: true }),
       ])
       if (bucketData) {
         applyBucketRows(bucketData)
         setBucketCatalogVersion(v => v + 1)
       }
-      if (prof) setProfile(prof)
+      if (prof) setProfile(enrichProfile(prof))
       if (taskData) setTasks(taskData)
       if (newsData) setNews(newsData)
       if (eventData) setEvents(eventData)
-      if (memberData) setMembers(memberData)
-      if (prof) await loadNotifications(session.user.id, prof)
+      if (memberData) setMembers(memberData.map(enrichProfile))
+      if (prof) await loadNotifications(session.user.id, enrichProfile(prof))
       setLoading(false)
     }
     load()
@@ -160,19 +180,41 @@ export function AppDataProvider({ session, children }) {
       }
     }
 
-    const mergeMemberRow = row => {
+    /**
+     * Při realtime updatu profilu znovu načteme jeho memberships z DB,
+     * protože postgres_changes vrací jen sloupce profiles tabulky.
+     */
+    const refreshProfileWithMemberships = async (profileId) => {
+      const { data } = await supabase
+        .from('profiles')
+        .select('*, profile_memberships(*)')
+        .eq('id', profileId)
+        .single()
+      if (!data) return null
+      return enrichProfile(data)
+    }
+
+    const mergeMemberRow = async (row) => {
       if (!row?.id) return
       const id = String(row.id)
+      const enriched = await refreshProfileWithMemberships(id)
+      if (!enriched) return
       setMembers(prev => {
         const idx = prev.findIndex(m => String(m.id) === id)
         if (idx === -1) {
-          return [...prev, row].sort((a, b) => (a.name || '').localeCompare(b.name || '', 'cs'))
+          return [...prev, enriched].sort((a, b) => (a.name || '').localeCompare(b.name || '', 'cs'))
         }
         const next = [...prev]
-        next[idx] = { ...next[idx], ...row }
+        next[idx] = enriched
         return next
       })
-      setProfile(prev => (prev && String(prev.id) === id ? { ...prev, ...row } : prev))
+      setProfile(prev => (prev && String(prev.id) === id ? enriched : prev))
+    }
+
+    /** Při změně členství znovu načteme dotčený profil. */
+    const handleMembershipChange = async (profileId) => {
+      if (!profileId) return
+      await mergeMemberRow({ id: profileId })
     }
 
     const channel = supabase
@@ -182,6 +224,15 @@ export function AppDataProvider({ session, children }) {
       })
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'profiles' }, payload => {
         mergeMemberRow(payload.new)
+      })
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'profile_memberships' }, payload => {
+        handleMembershipChange(payload.new?.profile_id)
+      })
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'profile_memberships' }, payload => {
+        handleMembershipChange(payload.new?.profile_id)
+      })
+      .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'profile_memberships' }, payload => {
+        handleMembershipChange(payload.old?.profile_id)
       })
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'tasks' }, payload => {
         const row = payload.new
@@ -289,7 +340,7 @@ export function AppDataProvider({ session, children }) {
 
   const myOpenCount = useMemo(() => {
     if (!profile) return 0
-    const buckets = [profile.bucket, profile.secondary_bucket].filter(Boolean)
+    const buckets = (profile.memberships ?? []).map(m => m.bucket)
     return tasks.filter(
       t =>
         !t.done &&
@@ -329,7 +380,7 @@ export function AppDataProvider({ session, children }) {
     )
   }, [])
 
-  const admin = profile ? isAdmin(profile.layer) : false
+  const admin = profile ? isAdmin(getEffectiveLayer(profile)) : false
   const adminPanelAccess = profile ? canAccessAdminPanel(profile) : false
 
   const value = {

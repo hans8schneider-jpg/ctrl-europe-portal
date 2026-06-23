@@ -29,10 +29,10 @@ export function DashboardPage() {
   const admin = isAdmin(profile.layer)
 
   const isCellScoped = ['vedouci', 'clen'].includes(profile.layer)
-  const profileBuckets = [profile.bucket, profile.secondary_bucket].filter(Boolean)
+  const profileBuckets = (profile.memberships ?? []).map(m => m.bucket)
   const taskInProfileBuckets = (t) => profileBuckets.includes(t.bucket_target)
   const memberInProfileBuckets = (m) =>
-    profileBuckets.includes(m.bucket) || profileBuckets.includes(m.secondary_bucket)
+    (m.memberships ?? []).some(mm => profileBuckets.includes(mm.bucket))
 
   const relevantTasks = (isCellScoped ? tasks.filter(taskInProfileBuckets) : tasks).filter(t =>
     canViewerSeeTask(t, profile)

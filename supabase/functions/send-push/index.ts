@@ -13,10 +13,16 @@ type NotificationRow = {
   push_only?: boolean | null;
 };
 
+type MembershipRow = {
+  bucket: string;
+  layer: string;
+  is_primary: boolean;
+};
+
 type ProfileRow = {
   id: string;
   bucket?: string | null;
-  secondary_bucket?: string | null;
+  profile_memberships?: MembershipRow[] | null;
   notify_push_tasks?: boolean | null;
   notify_push_news?: boolean | null;
   notify_push_events?: boolean | null;
@@ -58,7 +64,10 @@ function notificationVisibleToProfile(notification: NotificationRow, profile: Pr
   const target = notification.bucket_target;
   if (!target || target === "all") return true;
 
-  const buckets = [profile.bucket, profile.secondary_bucket].filter(Boolean) as string[];
+  const memberships = profile.profile_memberships ?? [];
+  const buckets: string[] = memberships.length
+    ? memberships.map((m) => m.bucket)
+    : [profile.bucket].filter(Boolean) as string[];
   return buckets.includes(target);
 }
 
@@ -147,7 +156,7 @@ Deno.serve(async (req) => {
   const [{ data: subscriptions, error: subscriptionsError }, { data: profiles, error: profilesError }] =
     await Promise.all([
       supabase.from("push_subscriptions").select("id, user_id, endpoint, p256dh, auth"),
-      supabase.from("profiles").select("*"),
+      supabase.from("profiles").select("id, bucket, notify_push_tasks, notify_push_news, notify_push_events, notify_push_mentions, notify_push_chat, profile_memberships(bucket, layer, is_primary)"),
     ]);
 
   if (subscriptionsError || profilesError) {
