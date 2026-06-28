@@ -25,7 +25,7 @@ module.exports = {
         },
       },
       fontFamily: {
-        sans: ['Syne', 'sans-serif'],
+        sans: ['Montserrat', 'sans-serif'],
         mono: ['JetBrains Mono', 'monospace'],
       },
       keyframes: {
