@@ -10,6 +10,7 @@ import {
 import { ROLE_LABELS, roleBadgeCls } from "../constants/roles";
 import { lastSeenCls } from "../constants/styles";
 import { Sec } from "../components/ui/Sec";
+import { AddMemberForm } from "../components/AddMemberForm";
 import { MemberModal } from "../components/MemberModal";
 import { isAdmin } from "../lib/permissions";
 import {
@@ -849,66 +850,7 @@ export function AdminPage() {
         </div>
       )}
 
-      {activeTab === "add" && (
-        <div className="bg-ctrl-panel border border-ctrl-warning p-4 mb-3.5 animate-fade-in max-[900px]:p-3.5">
-          <Sec>JAK PŘIDAT ČLENA</Sec>
-          <div className="text-xs text-ctrl-text2 leading-[1.8] font-mono max-[900px]:text-[11px] max-[900px]:leading-[1.7]">
-            <div className="text-ctrl-warning mb-2">
-              Krok 1 — Supabase → Authentication → Users → Add User
-            </div>
-            <div className="text-ctrl-text2 mb-1">
-              Email + heslo + Auto Confirm User ✓
-            </div>
-            <div className="text-ctrl-text2 mb-4">
-              Zkopíruj UUID nového uživatele
-            </div>
-            <div className="text-ctrl-warning mb-2">
-              Krok 2 — Supabase → SQL Editor → vytvoř profil:
-            </div>
-            <div className="bg-ctrl-bg2 p-3 text-ctrl-success text-[11px] leading-loose border-l-2 border-l-ctrl-accent overflow-x-auto max-[900px]:p-2.5 max-[900px]:text-[10px]">
-              INSERT INTO profiles (id, name, role)
-              <br />
-              VALUES (<br />
-              &nbsp;&nbsp;'UUID-sem',
-              <br />
-              &nbsp;&nbsp;'Jméno Příjmení',
-              <br />
-              &nbsp;&nbsp;'Role v týmu'
-              <br />
-              );
-            </div>
-            <div className="text-ctrl-warning mt-4 mb-2">
-              Krok 3 — Přidej členství (opakuj pro každou buňku):
-            </div>
-            <div className="bg-ctrl-bg2 p-3 text-ctrl-success text-[11px] leading-loose border-l-2 border-l-ctrl-accent overflow-x-auto max-[900px]:p-2.5 max-[900px]:text-[10px]">
-              INSERT INTO profile_memberships (profile_id, bucket, layer,
-              is_primary)
-              <br />
-              VALUES (<br />
-              &nbsp;&nbsp;'UUID-sem',
-              <br />
-              &nbsp;&nbsp;'Primární buňka',
-              <br />
-              &nbsp;&nbsp;'clen', -- vedouci / predsednictvo / zastupce_predsednictva
-              <br />
-              &nbsp;&nbsp;true -- false pro sekundární buňky
-              <br />
-              );
-            </div>
-            <div className="text-ctrl-text2 mt-3 text-[11px]">
-              profile_id se přiřadí automaticky (6 znaků). Pokud chybí, spusť
-              supabase/profiles-profile-id.sql.
-            </div>
-            <div className="text-ctrl-text2 mt-1 text-[11px]">
-              Globální vrstvy na profiles.layer: admin · developer · pozorovatel
-            </div>
-            <div className="text-ctrl-text2 mt-0.5 text-[11px]">
-              Buňkové vrstvy v profile_memberships.layer: predsednictvo ·
-              zastupce_predsednictva · vedouci · clen
-            </div>
-          </div>
-        </div>
-      )}
+      {activeTab === "add" && <AddMemberForm />}
 
       {selectedMember && (
         <MemberModal
