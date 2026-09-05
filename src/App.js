@@ -4,6 +4,7 @@ import { supabase } from './supabase'
 import { AppDataProvider } from './context/AppDataContext'
 import { AppLayout } from './components/layout/AppLayout'
 import { LoginPage } from './pages/LoginPage'
+import { MaintenancePage } from './pages/MaintenancePage'
 import { DashboardPage } from './pages/DashboardPage'
 import { BucketsPage } from './pages/BucketsPage'
 import { BucketPage } from './pages/BucketPage'
@@ -12,6 +13,8 @@ import { MyTasksPage } from './pages/MyTasksPage'
 import { AdminPage } from './pages/AdminPage'
 import { canAccessAdminPanel } from './lib/permissions'
 import { useAppData } from './context/AppDataContext'
+
+const MAINTENANCE_MODE = true
 
 function LoadingScreen() {
   return (
@@ -50,7 +53,7 @@ function AuthenticatedApp() {
   )
 }
 
-export default function App() {
+function PortalApp() {
   const [session, setSession] = useState(null)
   const [authLoading, setAuthLoading] = useState(true)
 
@@ -76,4 +79,9 @@ export default function App() {
       </AppDataProvider>
     </BrowserRouter>
   )
+}
+
+export default function App() {
+  if (MAINTENANCE_MODE) return <MaintenancePage />
+  return <PortalApp />
 }
