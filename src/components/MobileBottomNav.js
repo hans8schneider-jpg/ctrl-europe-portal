@@ -10,10 +10,19 @@ import { ReportModal } from './ReportModal'
 import { MyTasksNav } from './MyTasksNav'
 import { IconAdmin, IconCells, IconDashboard, IconMenu, IconProfile, IconReport, IconTasks } from './icons/NavIcons'
 
+function IconNewsletter({ className = 'w-5 h-5 shrink-0' }) {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden>
+      <rect x="3" y="5" width="18" height="14" rx="2" />
+      <path d="M3 7l9 7 9-7" />
+    </svg>
+  )
+}
+
 export function MobileBottomNav({ activeBucketSlug }) {
   const navigate = useNavigate()
   const location = useLocation()
-  const { profile, tasks, openCountByBucket, adminPanelAccess } = useAppData()
+  const { profile, tasks, openCountByBucket, admin, adminPanelAccess } = useAppData()
   const myTasksCount = getMyAssignedOpenTasks(tasks, profile).length
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [reportModalOpen, setReportModalOpen] = useState(false)
@@ -113,6 +122,18 @@ export function MobileBottomNav({ activeBucketSlug }) {
             </>
           )}
           <div className="font-mono text-[9px] tracking-[3px] text-ctrl-text3 uppercase py-3 px-3 pb-1 mt-1 border-t border-ctrl-border">Portál</div>
+          {admin && (
+            <div
+              className="flex items-center gap-3 py-3.5 px-3 cursor-pointer rounded-lg transition-colors duration-150 mb-0.5 active:bg-[rgba(42,107,255,0.1)]"
+              onClick={() => {
+                setDrawerOpen(false)
+                navigate('/newsletter')
+              }}
+            >
+              <IconNewsletter className="w-5 h-5 shrink-0 text-ctrl-accent" />
+              <span className="text-[15px] font-semibold">Newsletter</span>
+            </div>
+          )}
           <div
             className="flex items-center gap-3 py-3.5 px-3 cursor-pointer rounded-lg transition-colors duration-150 mb-0.5 active:bg-[rgba(255,184,0,0.08)]"
             onClick={() => {

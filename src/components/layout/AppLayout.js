@@ -14,11 +14,21 @@ import { NotificationsDropdown } from '../NotificationsDropdown'
 import { ReportModal } from '../ReportModal'
 import { IconAdmin, IconArrowLeft, IconCells, IconDashboard, IconProfile, IconReport } from '../icons/NavIcons'
 
+function IconNewsletter({ className = 'w-[18px] h-[18px] shrink-0' }) {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden>
+      <rect x="3" y="5" width="18" height="14" rx="2" />
+      <path d="M3 7l9 7 9-7" />
+    </svg>
+  )
+}
+
 const NAV_MAIN = [
   { path: '/', label: 'Dashboard', Icon: IconDashboard, end: true },
   { path: '/bunky', label: 'Buňky', Icon: IconCells },
   { path: '/profil', label: 'Profil', Icon: IconProfile },
   { path: '/admin', label: 'Admin', Icon: IconAdmin, adminOnly: true },
+  { path: '/newsletter', label: 'Newsletter', Icon: IconNewsletter, newsletter: true },
 ]
 
 const PAGE_TITLES = {
@@ -27,6 +37,7 @@ const PAGE_TITLES = {
   '/moje-ukoly': 'Moje úkoly',
   '/profil': 'Profil',
   '/admin': 'Admin',
+  '/newsletter': 'Newsletter',
 }
 
 export function AppLayout() {
@@ -149,7 +160,11 @@ export function AppLayout() {
 
         <nav className="flex-1 py-2.5 overflow-y-auto">
           <div className="py-2.5 px-5 pb-1 font-mono text-[8px] tracking-[3px] text-ctrl-text3 uppercase">Navigace</div>
-          {NAV_MAIN.filter(n => !n.adminOnly || adminPanelAccess).map(n => (
+          {NAV_MAIN.filter(n => {
+            if (n.newsletter) return admin
+            if (n.adminOnly) return adminPanelAccess
+            return true
+          }).map(n => (
             <NavLink key={n.path} to={n.path} end={n.end} className={navLinkCls}>
               <n.Icon />
               <span>{n.label}</span>

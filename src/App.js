@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { supabase } from './supabase'
-import { AppDataProvider } from './context/AppDataContext'
+import { AppDataProvider, useAppData } from './context/AppDataContext'
 import { AppLayout } from './components/layout/AppLayout'
 import { LoginPage } from './pages/LoginPage'
 import { DashboardPage } from './pages/DashboardPage'
@@ -10,8 +10,8 @@ import { BucketPage } from './pages/BucketPage'
 import { ProfilePage } from './pages/ProfilePage'
 import { MyTasksPage } from './pages/MyTasksPage'
 import { AdminPage } from './pages/AdminPage'
+import { NewsletterSendPage } from './pages/NewsletterSendPage'
 import { canAccessAdminPanel } from './lib/permissions'
-import { useAppData } from './context/AppDataContext'
 
 function LoadingScreen() {
   return (
@@ -29,6 +29,13 @@ function AdminRoute() {
   return <AdminPage />
 }
 
+function NewsletterRoute() {
+  const { admin, loading } = useAppData()
+  if (loading) return <LoadingScreen />
+  if (!admin) return <Navigate to="/" replace />
+  return <NewsletterSendPage />
+}
+
 function AuthenticatedApp() {
   const { profile, loading } = useAppData()
 
@@ -44,6 +51,7 @@ function AuthenticatedApp() {
         <Route path="bunka/:slug" element={<BucketPage />} />
         <Route path="profil" element={<ProfilePage />} />
         <Route path="admin" element={<AdminRoute />} />
+        <Route path="newsletter" element={<NewsletterRoute />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>
     </Routes>
