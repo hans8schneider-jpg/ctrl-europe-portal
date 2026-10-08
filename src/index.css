@@ -45,9 +45,9 @@
 }
 
 .newsletter-visual .gjs-pn-btn svg {
-  width: 22px;
-  height: 22px;
-  max-width: 22px;
+  width: 24px;
+  height: 24px;
+  max-width: 24px;
   display: block;
 }
 
@@ -63,7 +63,8 @@
 
 .newsletter-visual .gjs-pn-btn.is-danger,
 .newsletter-visual .gjs-pn-btn[title='Vymazat plátno'] {
-  color: #ff8fa3;
+  color: #ff4d6a;
+  background: rgba(255, 51, 102, 0.18);
 }
 
 .newsletter-visual .gjs-pn-btn.is-danger:hover {
@@ -103,17 +104,36 @@
   color: #ff5c7a;
 }
 
-.newsletter-visual .gjs-block-svg {
-  width: 44px;
+.newsletter-visual .gjs-block {
+  min-height: 74px;
+  padding: 10px 6px 8px;
+  margin: 5px 2.5% 3px;
+  justify-content: center;
+  align-items: center;
+  gap: 6px;
 }
 
-.newsletter-visual .gjs-block {
-  min-height: 86px;
-  padding: 10px 6px;
+.newsletter-visual .gjs-block__media {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  margin: 0;
+  flex: none;
+}
+
+.newsletter-visual .gjs-block__media svg,
+.newsletter-visual .gjs-block-svg {
+  width: 22px;
+  height: 22px;
+  max-width: 22px;
+  max-height: 22px;
+  display: block;
 }
 
 .newsletter-visual .gjs-block-label {
-  font-size: 12px;
+  font-size: 11px;
   font-family: inherit;
   white-space: normal;
   overflow: visible;
@@ -125,6 +145,36 @@
   font-size: 13px;
   font-weight: 600;
   letter-spacing: 0;
+}
+
+.newsletter-visual .gjs-sm-label {
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.newsletter-visual .gjs-sm-property {
+  margin-bottom: 6px;
+}
+
+.newsletter-visual .gjs-sm-property__width,
+.newsletter-visual .gjs-sm-property__height,
+.newsletter-visual .gjs-sm-property__max-width,
+.newsletter-visual .gjs-sm-property__min-height,
+.newsletter-visual .gjs-sm-property__margin,
+.newsletter-visual .gjs-sm-property__letter-spacing,
+.newsletter-visual .gjs-sm-property__line-height,
+.newsletter-visual .gjs-sm-property__font-style,
+.newsletter-visual .gjs-sm-property__vertical-align,
+.newsletter-visual .gjs-sm-property__text-shadow,
+.newsletter-visual .gjs-sm-property__border-collapse,
+.newsletter-visual .gjs-sm-property__border-radius,
+.newsletter-visual .gjs-sm-property__border,
+.newsletter-visual .gjs-sm-property__background {
+  display: none !important;
+}
+
+.newsletter-visual .gjs-trt-trait .gjs-label {
+  font-size: 12px;
 }
 
 .newsletter-visual .gjs-sm-sector-title {

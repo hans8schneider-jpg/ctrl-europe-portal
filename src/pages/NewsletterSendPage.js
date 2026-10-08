@@ -29,13 +29,6 @@ const primaryBtnCls = 'border-0 py-[9px] px-[18px] text-[11px] font-bold trackin
 
 const secondaryBtnCls = 'border border-ctrl-border py-[9px] px-[18px] text-[11px] font-bold tracking-[2px] uppercase cursor-pointer font-sans transition-all duration-200 bg-transparent text-ctrl-text2 hover:border-ctrl-text2 hover:text-ctrl-text disabled:opacity-50 disabled:cursor-not-allowed'
 
-const tabCls = (active) =>
-  cn(
-    'py-2.5 px-5 font-mono text-[10px] tracking-[2px] uppercase cursor-pointer border-b-2 border-transparent -mb-px transition-all duration-200 hover:text-ctrl-text shrink-0 max-[900px]:py-2 max-[900px]:px-3 max-[900px]:text-[9px] max-[900px]:tracking-[1px] whitespace-nowrap',
-    active && 'text-ctrl-accent border-b-ctrl-accent',
-    !active && 'text-ctrl-text2',
-  )
-
 async function callNewsletter(body) {
   const { data, error } = await supabase.functions.invoke('send-newsletter', { body })
   if (!error) return data ?? { error: 'request_failed' }
@@ -59,7 +52,7 @@ function sendFailureText(code) {
 export function NewsletterSendPage() {
   const editorRef = useRef(null)
   const sendEditorRef = useRef(null)
-  const [tab, setTab] = useState('templates')
+  const [templatesOpen, setTemplatesOpen] = useState(false)
   const [templates, setTemplates] = useState([])
   const [listLoading, setListLoading] = useState(true)
   const [editorSession, setEditorSession] = useState(null)
@@ -118,11 +111,8 @@ export function NewsletterSendPage() {
 
   useEffect(() => {
     loadTemplates()
-  }, [loadTemplates])
-
-  useEffect(() => {
-    if (tab === 'send') loadHistory()
-  }, [tab, loadHistory])
+    loadHistory()
+  }, [loadTemplates, loadHistory])
 
   const runPending = (action) => {
     if (editorRef.current?.isDirty() || dirty) {
@@ -167,15 +157,20 @@ export function NewsletterSendPage() {
     setSendDirty(false)
   }
 
-  const selectTab = (next) => {
-    if (next === tab) return
-    if (next === 'send' && (editorRef.current?.isDirty() || dirty)) {
-      setPending(() => () => setTab('send'))
-      return
-    }
-    if (tab === 'send') rememberCompose()
+  const openTemplates = () => {
+    rememberCompose()
     setPending(null)
-    setTab(next)
+    setTemplatesOpen(true)
+  }
+
+  const closeTemplates = () => {
+    runPending(() => {
+      setTemplatesOpen(false)
+      setEditorSession(null)
+      setDirty(false)
+      setMessage(null)
+      setPending(null)
+    })
   }
 
   const handleSave = async (snapshot) => {
@@ -388,224 +383,234 @@ export function NewsletterSendPage() {
 
   return (
     <div className="animate-fade-in">
-      <div className="flex items-center gap-3 mb-5">
+      <div className="flex items-center justify-between gap-3 mb-5">
         <Sec className="!mb-0">Newsletter</Sec>
-      </div>
-
-      <div className="flex gap-0 mb-5 border-b border-ctrl-border max-[900px]:overflow-x-auto">
-        <button type="button" className={tabCls(tab === 'templates')} onClick={() => selectTab('templates')}>
+        <button type="button" className={secondaryBtnCls} onClick={openTemplates}>
           Šablony
         </button>
-        <button type="button" className={tabCls(tab === 'send')} onClick={() => selectTab('send')}>
-          Odeslat
-        </button>
       </div>
 
-      {pending && (
-        <div className="mb-4 bg-ctrl-panel border border-ctrl-border p-4">
-          <p className="text-sm mb-3">Máš neuložené změny.</p>
-          <div className="flex flex-wrap gap-2">
-            <button type="button" className={primaryBtnCls} disabled={saving} onClick={saveAndContinue}>Uložit</button>
-            <button type="button" className={secondaryBtnCls} disabled={saving} onClick={discardAndContinue}>Zahodit změny</button>
-          </div>
+      <div className="bg-ctrl-panel border border-ctrl-border p-5 mb-4 max-[900px]:p-3.5">
+        <label className="block">
+          <span className="block font-mono text-[9px] tracking-[2px] uppercase text-ctrl-text2 mb-1.5">Šablona</span>
+          <select className={inputCls} value={compose.templateId} onChange={(event) => changeTemplate(event.target.value)}>
+            <option value="">Bez šablony</option>
+            {templates.map((item) => (
+              <option key={item.id} value={item.id}>{item.name} — {item.subject}</option>
+            ))}
+          </select>
+          <span className="block mt-2 text-sm text-ctrl-text2">Volitelná. Jen předvyplní mail, poslat jde i bez ní.</span>
+        </label>
+      </div>
+
+      {!templatesOpen && (
+        <div className="mb-4">
+          <NewsletterTemplateEditor
+            key={compose.key}
+            ref={sendEditorRef}
+            compose
+            name=""
+            subject={compose.subject}
+            html={compose.html}
+            canDelete={false}
+            saving={false}
+            onDirtyChange={setSendDirty}
+          />
         </div>
       )}
 
-      <div className={tab === 'templates' ? '' : 'hidden'}>
-        {message && (
-          <p className={cn('mb-4 text-sm', message.tone === 'ok' ? 'text-ctrl-success' : 'text-ctrl-danger')}>
-            {message.text}
-          </p>
-        )}
-
-        <div className="flex items-center justify-between gap-3 mb-3">
-          <Sec className="!mb-0">Šablony</Sec>
-          <button type="button" className={primaryBtnCls} onClick={openNew}>Nová šablona</button>
-        </div>
-
-        {listLoading ? (
-          <p className="font-mono text-[11px] tracking-[2px] uppercase text-ctrl-text2">Načítám…</p>
-        ) : (
-          <div className="bg-ctrl-panel border border-ctrl-border mb-4">
-            {templates.length === 0 ? (
-              <p className="p-4 text-sm text-ctrl-text2">Zatím tu není žádná šablona.</p>
-            ) : templates.map((item) => (
-              <button
-                key={item.id}
-                type="button"
-                className={cn(
-                  'w-full text-left px-4 py-3 border-b border-ctrl-border last:border-b-0 bg-transparent cursor-pointer hover:bg-[rgba(42,107,255,0.05)]',
-                  editorSession?.id === item.id && 'bg-[rgba(42,107,255,0.08)]',
-                )}
-                onClick={() => openTemplate(item)}
-              >
-                <div className="text-[14px] font-bold">{item.name}</div>
-                <div className="text-[13px] text-ctrl-text2 mt-0.5">{item.subject}</div>
-                <div className="font-mono text-[10px] text-ctrl-text3 mt-1">{formatDate(item.updated_at)}</div>
-              </button>
+      <div className="bg-ctrl-panel border border-ctrl-border p-5 max-[900px]:p-3.5">
+        <label className="block mb-4">
+          <span className="block font-mono text-[9px] tracking-[2px] uppercase text-ctrl-text2 mb-1.5">Skupina</span>
+          <select className={inputCls} value={group} onChange={(event) => changeGroup(event.target.value)}>
+            {GROUPS.map((item) => (
+              <option key={item.value} value={item.value}>{item.label}</option>
             ))}
-          </div>
-        )}
+          </select>
+        </label>
 
-        {editorSession && (
-          <NewsletterTemplateEditor
-            key={editorSession.key}
-            ref={editorRef}
-            name={editorSession.name}
-            subject={editorSession.subject}
-            html={editorSession.html}
-            canDelete={Boolean(editorSession.id)}
-            saving={saving}
-            onDirtyChange={setDirty}
-            onSave={handleSave}
-            onDelete={handleDelete}
-          />
-        )}
-      </div>
+        <button type="button" className={secondaryBtnCls} disabled={Boolean(busy)} onClick={countRecipients}>
+          Spočítat příjemce
+        </button>
 
-      <div className={tab === 'send' ? '' : 'hidden'}>
-        <Sec>Odeslat</Sec>
-        <div className="bg-ctrl-panel border border-ctrl-border p-5 mb-4 max-[900px]:p-3.5">
-          <label className="block">
-            <span className="block font-mono text-[9px] tracking-[2px] uppercase text-ctrl-text2 mb-1.5">Šablona</span>
-            <select className={inputCls} value={compose.templateId} onChange={(event) => changeTemplate(event.target.value)}>
-              <option value="">Bez šablony</option>
-              {templates.map((item) => (
-                <option key={item.id} value={item.id}>{item.name} — {item.subject}</option>
-              ))}
-            </select>
-            <span className="block mt-2 text-sm text-ctrl-text2">Volitelná. Jen předvyplní mail, poslat jde i bez ní.</span>
-          </label>
-        </div>
-
-        {tab === 'send' && (
-          <div className="mb-4">
-            <NewsletterTemplateEditor
-              key={compose.key}
-              ref={sendEditorRef}
-              compose
-              name=""
-              subject={compose.subject}
-              html={compose.html}
-              canDelete={false}
-              saving={false}
-              onDirtyChange={setSendDirty}
-            />
-          </div>
-        )}
-
-        <div className="bg-ctrl-panel border border-ctrl-border p-5 max-[900px]:p-3.5">
-          <label className="block mb-4">
-            <span className="block font-mono text-[9px] tracking-[2px] uppercase text-ctrl-text2 mb-1.5">Skupina</span>
-            <select className={inputCls} value={group} onChange={(event) => changeGroup(event.target.value)}>
-              {GROUPS.map((item) => (
-                <option key={item.value} value={item.value}>{item.label}</option>
-              ))}
-            </select>
-          </label>
-
-          <button type="button" className={secondaryBtnCls} disabled={Boolean(busy)} onClick={countRecipients}>
-            Spočítat příjemce
-          </button>
-
-          {count !== null && (
-            <div className="mt-4">
-              <p className="text-sm mb-3">
-                {group === 'all'
-                  ? `Ve všech skupinách je ${count} přihlášených.`
-                  : `V této skupině je ${count} přihlášených.`}
-              </p>
-              <label className="flex items-center gap-2 text-sm cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={confirmSend}
-                  onChange={(event) => setConfirmSend(event.target.checked)}
-                />
-                {group === 'all'
-                  ? 'Odesílám tento mail všem skupinám.'
-                  : 'Odesílám tento mail celé skupině.'}
-              </label>
-            </div>
-          )}
-
+        {count !== null && (
           <div className="mt-4">
-            <button
-              type="button"
-              className={primaryBtnCls}
-              disabled={count === null || !confirmSend || Boolean(busy)}
-              onClick={sendGroup}
-            >
-              Odeslat skupině
-            </button>
-          </div>
-
-          <div className="mt-6 pt-5 border-t border-ctrl-border">
-            <label className="block mb-3">
-              <span className="block font-mono text-[9px] tracking-[2px] uppercase text-ctrl-text2 mb-1.5">Zkušební adresa</span>
+            <p className="text-sm mb-3">
+              {group === 'all'
+                ? `Ve všech skupinách je ${count} přihlášených.`
+                : `V této skupině je ${count} přihlášených.`}
+            </p>
+            <label className="flex items-center gap-2 text-sm cursor-pointer">
               <input
-                type="email"
-                className={inputCls}
-                value={testEmail}
-                maxLength={254}
-                onChange={(event) => setTestEmail(event.target.value)}
+                type="checkbox"
+                checked={confirmSend}
+                onChange={(event) => setConfirmSend(event.target.checked)}
               />
+              {group === 'all'
+                ? 'Odesílám tento mail všem skupinám.'
+                : 'Odesílám tento mail celé skupině.'}
             </label>
-            <button
-              type="button"
-              className={secondaryBtnCls}
-              disabled={!testEmail.trim() || Boolean(busy)}
-              onClick={sendTest}
-            >
-              Poslat zkoušku
-            </button>
           </div>
+        )}
 
-          {sendMessage && (
-            <div className={cn('mt-4 text-sm', sendMessage.tone === 'ok' ? 'text-ctrl-success' : 'text-ctrl-danger')}>
-              <p>{sendMessage.text}</p>
-              {sendMessage.text === 'Odesláno. Část se nepodařila.' && (
-                <p className="mt-1 font-mono text-[12px]">{sendMessage.sent} / {sendMessage.failed}</p>
-              )}
-            </div>
-          )}
+        <div className="mt-4">
+          <button
+            type="button"
+            className={primaryBtnCls}
+            disabled={count === null || !confirmSend || Boolean(busy)}
+            onClick={sendGroup}
+          >
+            Odeslat skupině
+          </button>
         </div>
 
-        <div className="mt-6">
-          <Sec>Poslední odeslání</Sec>
-          <div className="bg-ctrl-panel border border-ctrl-border overflow-x-auto">
-            {history.length === 0 ? (
-              <p className="p-4 text-sm text-ctrl-text2">Zatím se nic neodesílalo.</p>
-            ) : (
-              <table className="w-full text-left text-[13px]">
-                <thead>
-                  <tr className="font-mono text-[9px] tracking-[2px] uppercase text-ctrl-text2 border-b border-ctrl-border">
-                    <th className="p-3 font-normal">Datum</th>
-                    <th className="p-3 font-normal">Šablona</th>
-                    <th className="p-3 font-normal">Skupina</th>
-                    <th className="p-3 font-normal">Předmět</th>
-                    <th className="p-3 font-normal">Režim</th>
-                    <th className="p-3 font-normal">Počty</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {history.map((row, index) => (
-                    <tr key={`${row.created_at}-${index}`} className="border-b border-ctrl-border last:border-b-0">
-                      <td className="p-3 whitespace-nowrap">{formatDate(row.created_at)}</td>
-                      <td className="p-3">{row.template_name}</td>
-                      <td className="p-3">{GROUP_LABEL[row.group_key] || row.group_key}</td>
-                      <td className="p-3">{row.subject}</td>
-                      <td className="p-3">{row.mode === 'test' ? 'Zkouška' : 'Skupina'}</td>
-                      <td className="p-3 font-mono text-[12px] whitespace-nowrap">
-                        příjemců {row.recipient_count} · odesláno {row.sent_count} · selhalo {row.failed_count}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+        <div className="mt-6 pt-5 border-t border-ctrl-border">
+          <label className="block mb-3">
+            <span className="block font-mono text-[9px] tracking-[2px] uppercase text-ctrl-text2 mb-1.5">Zkušební adresa</span>
+            <input
+              type="email"
+              className={inputCls}
+              value={testEmail}
+              maxLength={254}
+              onChange={(event) => setTestEmail(event.target.value)}
+            />
+          </label>
+          <button
+            type="button"
+            className={secondaryBtnCls}
+            disabled={!testEmail.trim() || Boolean(busy)}
+            onClick={sendTest}
+          >
+            Poslat zkoušku
+          </button>
+        </div>
+
+        {sendMessage && (
+          <div className={cn('mt-4 text-sm', sendMessage.tone === 'ok' ? 'text-ctrl-success' : 'text-ctrl-danger')}>
+            <p>{sendMessage.text}</p>
+            {sendMessage.text === 'Odesláno. Část se nepodařila.' && (
+              <p className="mt-1 font-mono text-[12px]">{sendMessage.sent} / {sendMessage.failed}</p>
             )}
           </div>
+        )}
+      </div>
+
+      <div className="mt-6">
+        <Sec>Poslední odeslání</Sec>
+        <div className="bg-ctrl-panel border border-ctrl-border overflow-x-auto">
+          {history.length === 0 ? (
+            <p className="p-4 text-sm text-ctrl-text2">Zatím se nic neodesílalo.</p>
+          ) : (
+            <table className="w-full text-left text-[13px]">
+              <thead>
+                <tr className="font-mono text-[9px] tracking-[2px] uppercase text-ctrl-text2 border-b border-ctrl-border">
+                  <th className="p-3 font-normal">Datum</th>
+                  <th className="p-3 font-normal">Šablona</th>
+                  <th className="p-3 font-normal">Skupina</th>
+                  <th className="p-3 font-normal">Předmět</th>
+                  <th className="p-3 font-normal">Režim</th>
+                  <th className="p-3 font-normal">Počty</th>
+                </tr>
+              </thead>
+              <tbody>
+                {history.map((row, index) => (
+                  <tr key={`${row.created_at}-${index}`} className="border-b border-ctrl-border last:border-b-0">
+                    <td className="p-3 whitespace-nowrap">{formatDate(row.created_at)}</td>
+                    <td className="p-3">{row.template_name}</td>
+                    <td className="p-3">{GROUP_LABEL[row.group_key] || row.group_key}</td>
+                    <td className="p-3">{row.subject}</td>
+                    <td className="p-3">{row.mode === 'test' ? 'Zkouška' : 'Skupina'}</td>
+                    <td className="p-3 font-mono text-[12px] whitespace-nowrap">
+                      příjemců {row.recipient_count} · odesláno {row.sent_count} · selhalo {row.failed_count}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
         </div>
       </div>
+
+      {templatesOpen && (
+        <div
+          className="fixed inset-0 z-[350] flex justify-end bg-[rgba(0,0,0,0.55)] backdrop-blur-sm animate-fade-in max-[900px]:bottom-[62px]"
+          onClick={closeTemplates}
+        >
+          <div
+            className="w-full max-w-[920px] h-full bg-ctrl-bg border-l border-ctrl-border overflow-y-auto animate-fade-in shadow-[-24px_0_80px_rgba(0,0,0,0.35)]"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="sticky top-0 z-10 flex items-center justify-between gap-3 px-5 py-4 bg-ctrl-panel border-b border-ctrl-border max-[900px]:px-4">
+              <Sec className="!mb-0">Šablony</Sec>
+              <button type="button" className={secondaryBtnCls} onClick={closeTemplates}>
+                Zavřít
+              </button>
+            </div>
+
+            <div className="p-5 max-[900px]:p-3.5">
+              {pending && (
+                <div className="mb-4 bg-ctrl-panel border border-ctrl-border p-4">
+                  <p className="text-sm mb-3">Máš neuložené změny.</p>
+                  <div className="flex flex-wrap gap-2">
+                    <button type="button" className={primaryBtnCls} disabled={saving} onClick={saveAndContinue}>Uložit</button>
+                    <button type="button" className={secondaryBtnCls} disabled={saving} onClick={discardAndContinue}>Zahodit změny</button>
+                  </div>
+                </div>
+              )}
+
+              {message && (
+                <p className={cn('mb-4 text-sm', message.tone === 'ok' ? 'text-ctrl-success' : 'text-ctrl-danger')}>
+                  {message.text}
+                </p>
+              )}
+
+              <div className="flex items-center justify-between gap-3 mb-3">
+                <p className="text-sm text-ctrl-text2">Uložené šablony pro rychlé předvyplnění mailu.</p>
+                <button type="button" className={primaryBtnCls} onClick={openNew}>Nová šablona</button>
+              </div>
+
+              {listLoading ? (
+                <p className="font-mono text-[11px] tracking-[2px] uppercase text-ctrl-text2">Načítám…</p>
+              ) : (
+                <div className="bg-ctrl-panel border border-ctrl-border mb-4">
+                  {templates.length === 0 ? (
+                    <p className="p-4 text-sm text-ctrl-text2">Zatím tu není žádná šablona.</p>
+                  ) : templates.map((item) => (
+                    <button
+                      key={item.id}
+                      type="button"
+                      className={cn(
+                        'w-full text-left px-4 py-3 border-b border-ctrl-border last:border-b-0 bg-transparent cursor-pointer hover:bg-[rgba(42,107,255,0.05)]',
+                        editorSession?.id === item.id && 'bg-[rgba(42,107,255,0.08)]',
+                      )}
+                      onClick={() => openTemplate(item)}
+                    >
+                      <div className="text-[14px] font-bold">{item.name}</div>
+                      <div className="text-[13px] text-ctrl-text2 mt-0.5">{item.subject}</div>
+                      <div className="font-mono text-[10px] text-ctrl-text3 mt-1">{formatDate(item.updated_at)}</div>
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {editorSession && (
+                <NewsletterTemplateEditor
+                  key={editorSession.key}
+                  ref={editorRef}
+                  name={editorSession.name}
+                  subject={editorSession.subject}
+                  html={editorSession.html}
+                  canDelete={Boolean(editorSession.id)}
+                  saving={saving}
+                  onDirtyChange={setDirty}
+                  onSave={handleSave}
+                  onDelete={handleDelete}
+                />
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

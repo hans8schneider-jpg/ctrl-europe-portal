@@ -194,8 +194,30 @@ function filledIcon(path, evenodd) {
   return `<svg viewBox="0 0 24 24" width="22" height="22"><path fill="currentColor"${rule} d="${path}"/></svg>`
 }
 
-const TRASH_ICON = filledIcon('M9 3h6l1 1h4v2H4V4h4l1-1zm-1 5h8l-.7 13H8.7L8 8zm2.2 2h1.6v9h-1.6v-9zm3.2 0h1.6v9h-1.6v-9z', true)
-const SETTINGS_ICON = filledIcon('M3 17v2h6v-2H3zM3 5v2h10V5H3zm10 16v-2h8v-2h-8v-2h-2v6h2zM7 9v2H3v2h4v2h2V9H7zm14 4v-2H11v2h10zm-6-4h2V7h4V5h-4V3h-2v6z')
+const TRASH_ICON = filledIcon('M9 3h6l1 1h4v2H4V4h4l1-1zM6 8h12v11a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V8zm3 2h1.8v9H9v-9zm4.2 0H15v9h-1.8v-9z', true)
+const SETTINGS_ICON = filledIcon('M12 15.5a3.5 3.5 0 0 1-3.5-3.5A3.5 3.5 0 0 1 12 8.5a3.5 3.5 0 0 1 3.5 3.5 3.5 3.5 0 0 1-3.5 3.5M19.43 12.97c.04-.32.07-.64.07-.97s-.03-.66-.07-1l2.11-1.63c.19-.15.24-.42.12-.64l-2-3.46c-.12-.22-.39-.3-.61-.22l-2.49 1c-.52-.4-1.06-.73-1.69-.98l-.38-2.65A.488.488 0 0 0 14 2h-4c-.25 0-.46.18-.49.42l-.37 2.65c-.63.25-1.17.59-1.69.98l-2.49-1c-.23-.09-.49 0-.61.22l-2 3.46c-.13.22-.07.49.12.64L4.57 11c-.04.34-.07.67-.07 1s.03.65.07.97l-2.11 1.66c-.19.15-.24.42-.12.64l2 3.46c.12.22.39.3.61.22l2.49-1c.52.4 1.06.73 1.69.98l.38 2.65c.03.24.24.42.49.42h4c.25 0 .46-.18.49-.42l.37-2.65c.63-.25 1.17-.59 1.69-.98l2.49 1c.23.09.49 0 .61-.22l2-3.46c.12-.22.07-.49-.12-.64l-2.11-1.66z', true)
+
+const BUTTON_ICONS = {
+  'set-device-desktop': filledIcon('M3 4h18a1 1 0 0 1 1 1v11a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1zm2 2v8h14V6H5zm3 12h8v2H8v-2z', true),
+  'set-device-tablet': filledIcon('M7 2h10a2 2 0 0 1 2 2v16a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2zm2 3v12h6V5H9zm3 14.2a1.1 1.1 0 1 0 0-2.2 1.1 1.1 0 0 0 0 2.2z', true),
+  'set-device-mobile': filledIcon('M8 1h8a2 2 0 0 1 2 2v18a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V3a2 2 0 0 1 2-2zm1 3v14h6V4H9zm3 16.2a1.1 1.1 0 1 0 0-2.2 1.1 1.1 0 0 0 0 2.2z', true),
+  'sw-visibility': filledIcon('M4 4h16v16H4V4zm3 3v10h10V7H7z', true),
+  'core:component-outline': filledIcon('M4 4h16v16H4V4zm3 3v10h10V7H7z', true),
+  preview: filledIcon('M12 5C7 5 2.7 8.1 1 12c1.7 3.9 6 7 11 7s9.3-3.1 11-7c-1.7-3.9-6-7-11-7zm0 11a4 4 0 1 1 0-8 4 4 0 0 1 0 8zm0-2a2 2 0 1 0 0-4 2 2 0 0 0 0 4z', true),
+  fullscreen: filledIcon('M4 4h7v2.2H6.2V11H4V4zm9 0h7v7h-2.2V6.2H13V4zM4 13h2.2v4.8H11V20H4v-7zm9.8 4.8V13H20v7h-7v-2.2h4.8z'),
+  'export-template': filledIcon('M8.6 16.6 3.2 12l5.4-4.6L7.2 6 1 12l6.2 6 1.4-1.4zm6.8 0 5.4-4.6-5.4-4.6L16.8 6 23 12l-6.2 6-1.4-1.4z'),
+  'gjs-open-import-template': filledIcon('M5 20h14v-2H5v2zM11 4h2v8h3.2L12 16.2 7.8 12H11V4z'),
+  'gjs-toggle-images': filledIcon('M4 5h16a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1zm3 10 2.2-2.8 1.6 2 2.4-3.2L17 15H7zm1.2-6.2a1.3 1.3 0 1 0 0-2.6 1.3 1.3 0 0 0 0 2.6z'),
+  undo: filledIcon('M12.5 8A8.1 8.1 0 0 0 5.6 10.6L2 7v9h9l-3.6-3.6A5.8 5.8 0 0 1 12.5 11c3.5 0 6.5 2.3 7.6 5.5l2.4-.8C21.1 11 17.1 8 12.5 8z'),
+  redo: filledIcon('M11.5 8c2.6 0 5 .9 6.9 2.6L22 7v9h-9l3.6-3.6A5.8 5.8 0 0 0 11.5 11c-3.5 0-6.6 2.3-7.6 5.5l-2.4-.8C2.9 11 6.9 8 11.5 8z'),
+  'core:undo': filledIcon('M12.5 8A8.1 8.1 0 0 0 5.6 10.6L2 7v9h9l-3.6-3.6A5.8 5.8 0 0 1 12.5 11c3.5 0 6.5 2.3 7.6 5.5l2.4-.8C21.1 11 17.1 8 12.5 8z'),
+  'core:redo': filledIcon('M11.5 8c2.6 0 5 .9 6.9 2.6L22 7v9h-9l3.6-3.6A5.8 5.8 0 0 0 11.5 11c-3.5 0-6.6 2.3-7.6 5.5l-2.4-.8C2.9 11 6.9 8 11.5 8z'),
+  'canvas-clear': TRASH_ICON,
+  'open-sm': filledIcon('M16.6 8.9 7.6 0 6.2 1.4l2.4 2.4L3.4 9c-.6.6-.6 1.5 0 2.1l5.5 5.5c.3.3.7.4 1.1.4s.8-.1 1.1-.4l5.5-5.5c.6-.6.6-1.5 0-2.1zM5.2 10 10 5.2 14.8 10H5.2zM19 11.5s-2 2.2-2 3.5a2 2 0 1 0 4 0c0-1.3-2-3.5-2-3.5z'),
+  'open-tm': filledIcon('M10.6 13.8a4 4 0 0 1 0-5.6l2-2a4 4 0 0 1 5.6 5.6l-1.2 1.2-1.4-1.4 1.2-1.2a2 2 0 0 0-2.8-2.8l-2 2a2 2 0 0 0 0 2.8l.6.6-1.4 1.4-.6-.6zm2.8-3.6a4 4 0 0 1 0 5.6l-2 2a4 4 0 0 1-5.6-5.6l1.2-1.2 1.4 1.4-1.2 1.2a2 2 0 1 0 2.8 2.8l2-2a2 2 0 0 0 0-2.8l-.6-.6 1.4-1.4.6.6z'),
+  'open-layers': filledIcon('M12 3 3 8l9 5 9-5-9-5zm-7.2 8.2L12 16l7.2-4.8 1.8 1L12 18l-9-5.8 1.8-1zm0 4L12 20l7.2-4.8 1.8 1L12 22l-9-5.8 1.8-1z'),
+  'open-blocks': filledIcon('M4 4h16v16H4V4zm7 3h2v4h4v2h-4v4h-2v-4H7v-2h4V7z', true),
+}
 
 const ICON_TITLES = {
   'set-device-desktop': 'Počítač',
@@ -213,10 +235,10 @@ const ICON_TITLES = {
   'core:undo': 'Zpět',
   'core:redo': 'Vpřed',
   'canvas-clear': 'Vymazat plátno',
-  'open-sm': 'Styl',
-  'open-tm': 'Nastavení',
+  'open-sm': 'Písmo a barvy',
+  'open-tm': 'Odkaz',
   'open-layers': 'Vrstvy',
-  'open-blocks': 'Bloky',
+  'open-blocks': 'Přidat',
   'insert-odhlaseni': 'Odhlášení',
 }
 
@@ -225,11 +247,37 @@ const ENGLISH_TITLES = {
   Preview: 'Náhled',
   Fullscreen: 'Celá obrazovka',
   'View code': 'Kód',
-  'Open Style Manager': 'Styl',
-  Settings: 'Nastavení',
+  'Open Style Manager': 'Písmo a barvy',
+  Settings: 'Odkaz',
   'Open Layer Manager': 'Vrstvy',
-  'Open Blocks': 'Bloky',
+  'Open Blocks': 'Přidat',
 }
+
+const HIDDEN_BUTTONS = new Set([
+  'sw-visibility',
+  'core:component-outline',
+  'fullscreen',
+  'export-template',
+  'gjs-open-import-template',
+  'gjs-toggle-images',
+  'open-layers',
+  'canvas-clear',
+])
+
+const HIDDEN_BLOCKS = ['sect30', 'sect37', 'quote', 'link', 'link-block', 'grid-items', 'list-items']
+
+const BLOCK_ORDER = ['text', 'text-sect', 'image', 'button', 'divider', 'sect100', 'sect50', 'odhlaseni']
+
+const SIMPLE_PROPS = new Set([
+  'font-family',
+  'font-size',
+  'font-weight',
+  'color',
+  'text-align',
+  'text-decoration',
+  'background-color',
+  'padding',
+])
 
 const BLOCK_LABELS = {
   sect100: 'Celá šířka',
@@ -260,7 +308,7 @@ const PROP_BY_CSS = {
   'max-width': 'Nejširší',
   'min-height': 'Nejnižší',
   margin: 'Vnější mezera',
-  padding: 'Vnitřní mezera',
+  padding: 'Mezera uvnitř',
   'margin-top': 'Nahoře',
   'margin-right': 'Vpravo',
   'margin-bottom': 'Dole',
@@ -366,6 +414,23 @@ function translateStyleProps(props) {
   })
 }
 
+function hideAdvancedStyleFields() {
+  const drop = new Set([
+    'width', 'height', 'max-width', 'min-height', 'margin',
+    'letter-spacing', 'line-height', 'font-style', 'vertical-align', 'text-shadow',
+    'border-collapse', 'border-radius', 'border', 'background',
+  ])
+  document.querySelectorAll('.newsletter-visual .gjs-sm-property').forEach((el) => {
+    const id = [...el.classList].join(' ').match(/gjs-sm-property__([a-z0-9-]+)/)?.[1]
+    if (id && drop.has(id)) el.style.display = 'none'
+  })
+  const names = { Rozměry: 'Mezery', Dimension: 'Mezery', Barvy: 'Pozadí', Decorations: 'Pozadí' }
+  document.querySelectorAll('.newsletter-visual .gjs-sm-sector-label').forEach((el) => {
+    const next = names[el.textContent.trim()]
+    if (next) el.textContent = next
+  })
+}
+
 function adaptEditorForUsers(editor) {
   try {
     Object.entries(BLOCK_LABELS).forEach(([id, label]) => {
@@ -373,12 +438,52 @@ function adaptEditorForUsers(editor) {
       if (block) block.set('label', label)
     })
 
+    HIDDEN_BLOCKS.forEach((id) => {
+      if (editor.BlockManager.get(id)) editor.BlockManager.remove(id)
+    })
+    const blocks = editor.BlockManager.getAll()
+    const models = []
+    blocks.forEach((block) => models.push(block))
+    models.sort((a, b) => {
+      const ai = BLOCK_ORDER.indexOf(String(a.get('id') || ''))
+      const bi = BLOCK_ORDER.indexOf(String(b.get('id') || ''))
+      return (ai < 0 ? 50 : ai) - (bi < 0 ? 50 : bi)
+    })
+    blocks.reset(models)
+
     editor.StyleManager.getSectors().forEach((sector) => {
-      const next = SECTOR_NAMES[sector.get('name')]
-      if (next) sector.set('name', next)
-      if (sector.get('name') === 'Písmo') sector.set('open', true)
-      translateStyleProps(sector.get('properties'))
+      const props = sector.get('properties')
+      const current = sector.get('name')
+      const renamed = current === 'Dimension' || current === 'Rozměry' || current === 'Mezery'
+        ? 'Mezery'
+        : current === 'Typography' || current === 'Písmo'
+          ? 'Písmo'
+          : current === 'Decorations' || current === 'Barvy' || current === 'Pozadí'
+            ? 'Pozadí'
+            : SECTOR_NAMES[current] || current
+      sector.set('name', renamed)
+      if (renamed === 'Písmo') sector.set('open', true)
+      if (props && props.forEach) {
+        props.forEach((prop) => {
+          const css = String(prop.get('property') || '')
+          if (css && !SIMPLE_PROPS.has(css)) prop.set('visible', false)
+        })
+        translateStyleProps(props)
+      }
+      let shown = false
+      props?.forEach?.((prop) => {
+        if (prop.get('visible') !== false) shown = true
+      })
+      sector.set('visible', shown)
       sector.view?.render?.()
+      sector.view?.updateVisibility?.()
+      props?.forEach?.((prop) => {
+        if (prop.get('visible') === false) {
+          prop.set('visible', true, { silent: true })
+          prop.set('visible', false)
+        }
+        prop.view?.updateVisibility?.()
+      })
     })
 
     document.querySelectorAll('.newsletter-visual .gjs-radio-item').forEach((item) => {
@@ -415,6 +520,7 @@ function adaptEditorForUsers(editor) {
       const next = selectNames[option.value]
       if (next) option.textContent = next
     })
+    hideAdvancedStyleFields()
   } catch {
     /* popisky nejsou důvod shodit editor */
   }
@@ -426,11 +532,19 @@ const CANVAS_ICON_CSS = `
   .gjs-toolbar-item svg { width: 20px; height: 20px; display: block; }
   .gjs-toolbar-item:hover { background: rgba(255,255,255,.14); }
   .gjs-toolbar-item:last-child { color: #ff5c7a; }
+  .gjs-badge { display: none !important; }
 `
 
 function polishEditorIcons(editor) {
   const icons = editor.getConfig?.().icons
-  if (icons) icons.delete = TRASH_ICON
+  if (icons) {
+    icons.delete = TRASH_ICON
+    icons.copy = filledIcon('M16 1H4a2 2 0 0 0-2 2v14h2V3h12V1zm3 4H8a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2zm0 16H8V7h11v14z', true)
+    icons.move = filledIcon('M10 9H6V6L1 11l5 5v-3h4v4h3l5-5-5-5h-3v3zm4 0V6h3l-5-5-5 5h3v3h4zm-4 6H7l5 5 5-5h-3v-3h-4v3z')
+    icons.arrowUp = filledIcon('M4 12l1.4 1.4L11 7.8V20h2V7.8l5.6 5.6L20 12l-8-8-8 8z')
+    icons.plus = filledIcon('M11 5h2v6h6v2h-6v6h-2v-6H5v-2h6V5z')
+    icons.close = filledIcon('M18.3 5.7 12 12l6.3 6.3-1.4 1.4L10.6 13.4 4.3 19.7 2.9 18.3 9.2 12 2.9 5.7 4.3 4.3l6.3 6.3 6.3-6.3 1.4 1.4z')
+  }
 
   editor.Panels.getPanels().forEach((panel) => {
     const buttons = panel.get('buttons')
@@ -443,18 +557,23 @@ function polishEditorIcons(editor) {
     })
     empty.forEach((button) => buttons.remove(button))
 
+    const hidden = []
     buttons.forEach((button) => {
       const id = String(button.get('id') || '')
       const command = button.get('command')
       const commandId = typeof command === 'string' ? command : ''
+      if (HIDDEN_BUTTONS.has(commandId) || HIDDEN_BUTTONS.has(id)) {
+        hidden.push(button)
+        return
+      }
       const attrs = { ...(button.get('attributes') || {}) }
       const title = ICON_TITLES[commandId] || ICON_TITLES[id] || ENGLISH_TITLES[attrs.title]
       if (title) attrs.title = title
       if (title) button.set('attributes', attrs)
-      const key = `${commandId} ${id} ${title || ''}`
-      if (key.includes('canvas-clear') || title === 'Vymazat plátno') button.set('label', TRASH_ICON)
-      if (key.includes('open-tm') || attrs.title === 'Settings' || title === 'Nastavení') button.set('label', SETTINGS_ICON)
+      const icon = BUTTON_ICONS[commandId] || BUTTON_ICONS[id]
+      if (icon) button.set('label', icon)
     })
+    hidden.forEach((button) => buttons.remove(button))
   })
 
   const retitle = () => {
@@ -470,14 +589,24 @@ function polishEditorIcons(editor) {
 
   const nameToolbar = () => {
     const items = [...document.querySelectorAll('.newsletter-visual .gjs-toolbar-item')]
-    const fromEnd = ['Smazat', 'Kopírovat', 'Posunout', 'Nadřazený prvek']
+    const fromEnd = ['Smazat', 'Kopírovat', 'Přesunout', 'Označit okolí']
     items.reverse().forEach((item, index) => {
       if (fromEnd[index]) item.setAttribute('title', fromEnd[index])
     })
   }
-  editor.on('component:selected', () => window.setTimeout(nameToolbar, 0))
+  const hideTechnicalTraits = () => {
+    document.querySelectorAll('.newsletter-visual .gjs-trt-trait').forEach((el) => {
+      const text = el.textContent.replace(/\s+/g, ' ').trim()
+      if (text.startsWith('Id') || text.startsWith('Titulek')) el.style.display = 'none'
+    })
+  }
+  editor.on('component:selected', () => {
+    window.setTimeout(nameToolbar, 0)
+    window.setTimeout(hideTechnicalTraits, 0)
+  })
   adaptEditorForUsers(editor)
   editor.on('load', () => adaptEditorForUsers(editor))
+  window.setTimeout(() => adaptEditorForUsers(editor), 60)
 }
 
 export const NewsletterTemplateEditor = forwardRef(function NewsletterTemplateEditor({
@@ -632,10 +761,10 @@ export const NewsletterTemplateEditor = forwardRef(function NewsletterTemplateEd
                     fullscreen: 'Celá obrazovka',
                     'sw-visibility': 'Okraje prvků',
                     'export-template': 'Kód',
-                    'open-sm': 'Styl',
-                    'open-tm': 'Nastavení',
+                    'open-sm': 'Písmo a barvy',
+                    'open-tm': 'Odkaz',
                     'open-layers': 'Vrstvy',
-                    'open-blocks': 'Bloky',
+                    'open-blocks': 'Přidat',
                   },
                 },
               },
@@ -654,9 +783,9 @@ export const NewsletterTemplateEditor = forwardRef(function NewsletterTemplateEd
                 layer: 'Vrstva',
                 fileButton: 'Obrázky',
                 sectors: {
-                  dimension: 'Rozměry',
+                  dimension: 'Mezery',
                   typography: 'Písmo',
-                  decorations: 'Barvy',
+                  decorations: 'Pozadí',
                 },
                 options: {
                   'text-align': {
@@ -735,14 +864,14 @@ export const NewsletterTemplateEditor = forwardRef(function NewsletterTemplateEd
                 },
               },
               traitManager: {
-                empty: 'Klikni na část mailu.',
+                empty: 'Klikni na odkaz nebo obrázek.',
                 label: 'Podrobnosti',
                 traits: {
                   labels: {
                     id: 'Id',
-                    alt: 'Popis obrázku',
+                    alt: 'Co je na obrázku',
                     title: 'Titulek',
-                    href: 'Adresa odkazu',
+                    href: 'Kam odkaz vede',
                     target: 'Otevřít',
                     src: 'Adresa obrázku',
                   },
@@ -856,7 +985,7 @@ export const NewsletterTemplateEditor = forwardRef(function NewsletterTemplateEd
         {compose
           ? 'Tady skládáš mail, který odejde. Šablona ho jen předvyplní, poslat jde i bez ní.'
           : 'Tady se ukládá vzhled. Při odeslání ho můžeš použít jako výchozí, není to povinné.'}
-        {mode === 'visual' && ' Klikni do textu a přepiš ho. Vpravo jsou rozměry, písmo a barvy. Červený koš smaže označený kus.'}
+        {mode === 'visual' && ' Klikni do textu a přepiš ho. Přidat vloží nový kus, Písmo a barvy změní označený text. Červený koš u prvku ho smaže.'}
       </p>
       <div className={`grid gap-3 mb-4 ${compose ? '' : 'max-[900px]:grid-cols-1 sm:grid-cols-2'}`}>
         {!compose && (
