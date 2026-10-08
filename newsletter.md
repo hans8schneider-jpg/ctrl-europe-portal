@@ -76,7 +76,7 @@ Resend už posílá maily z veřejného webu. Nový Resend účet nezakládej. O
 
 Stránka pro admina a jedna funkce na serveru. Prohlížeč ukládá šablony a žádá o odeslání. Seznam odběratelů skládá jen funkce.
 
-Admin otevře `/newsletter`. Na záložce Šablony vytvoří šablonu, upraví ji ve vizuálním editoru a ve zdrojovém HTML a uloží. Na záložce Odeslat vybere uloženou šablonu a jednu skupinu. Nejdřív vidí jen počet příjemců. Může poslat zkoušku na jednu adresu, která v té skupině je. Celou skupinu odešle až po zaškrtnutí potvrzení. Šablony, počet, zkoušku i odeslání dělá Edge Function `send-newsletter`. Prohlížeč tabulku odběratelů nečte a jejich adresy nikdy nedostane. Odeslání si HTML nebere z prohlížeče, ale z uložené šablony.
+Admin otevře `/newsletter`. Na záložce Šablony vytvoří šablonu, upraví ji ve vizuálním editoru a ve zdrojovém HTML a uloží. Na záložce Odeslat skládá mail ve stejném editoru, zase ve vzhledu a v HTML. Šablona je volitelná: když ji vybere, jen předvyplní editor. Poslat jde i bez ní. Nejdřív vidí jen počet příjemců. Může poslat zkoušku na jednu adresu, která v té skupině je. Celou skupinu odešle až po zaškrtnutí potvrzení. Šablony, počet, zkoušku i odeslání dělá Edge Function `send-newsletter`. Prohlížeč tabulku odběratelů nečte a jejich adresy nikdy nedostane. Mail, který odchází, je HTML z editoru na záložce Odeslat po stejném čištění jako při uložení šablony.
 
 Vzhled stránky drž u admin stránky: tmavý panel, `Sec`, mono popisky, stávající inputy a tlačítka (`bg-ctrl-panel`, `bg-ctrl-bg2`, `border-ctrl-border`, `text-ctrl-accent`). Texty jen česky. Portál nemá přepínač jazyka. Framer Motion nepřidávej. Vlastní CSS soubor pro stránku nezakládej. CSS editoru z knihovny GrapesJS naimportuj, jinak se editor nerozloží.
 
@@ -157,7 +157,7 @@ Dvě záložky ve stejném stylu jako záložky na admin stránce: **Šablony** 
 
 ### Šablony
 
-Tady admin mail kreslí a ukládá. Ještě se nikomu nic neposílá.
+Tady admin skládá vzhled a ukládá ho. Text v šabloně je ukázka, jak mail bude vypadat. Ještě se nikomu nic neposílá.
 
 Seznam uložených šablon: název, předmět, datum poslední úpravy. Když admin seznam otevře poprvé, je v něm šablona **Přihlášení k newsletteru**. Je to vzhled mailu po přihlášení na webu, ne nový mail, který bys vymýšlel. Tlačítko „Nová šablona“ otevře editor se stejným HTML, ať další mail začíná ve stejném kabátě. Klik na řádek otevře tu šablonu v editoru. Tlačítka editoru: „Uložit“ a u existující šablony „Smazat“. Smazání se zeptá větou „Smazat šablonu {název}?“ a až potom smaže. Rozepsanou neuloženou šablonu při odchodu ze záložky nezahazuj potichu: když jsou neuložené změny, napiš „Máš neuložené změny.“ a nech ho uložit, nebo změny zahodit.
 
@@ -177,17 +177,17 @@ Uložení pošle název, předmět a HTML z právě otevřeného režimu (u Vzhl
 
 ### Odeslat
 
-Tady admin vybranou uloženou šablonu pošle. Vzhled už needituje. Když chce jiný vzhled, vrátí se na Šablony a uloží změnu.
+Tady admin skládá mail, který odejde. Editor je stejný jako u šablony: předmět, přepínač **Vzhled** a **HTML**. Název, Uložit a Smazat tu nejsou. Rozepsaný mail se do šablony neukládá. Bez vybrané šablony editor začíná vzhledem mailu po přihlášení.
 
-1. Výběr uložené šablony. V seznamu je název a předmět. Bez vybrané šablony nejdou count, zkouška ani odeslání.
-2. Náhled vybrané šablony v `iframe` s `sandbox=""` (bez skriptů) a `srcDoc`. V náhledu nahraď `{{unsubscribe_url}}` za `#`, ať odkaz nic nevolá. Token do náhledu nedávej.
+1. Výběr šablony je volitelný. První položka je „Bez šablony“. Když vybere uloženou šablonu, editor se předvyplní jejím předmětem a HTML. Když už v mailu něco změnil, nejdřív se zeptej „Nahradit rozepsaný mail touto šablonou?“. Bez šablony jde spočítat příjemce, poslat zkoušku i odeslat skupinu.
+2. Předmět a plátno mailu. Ve vzhledu GrapesJS, v HTML zdroj. Značka `{{unsubscribe_url}}` zůstane, token do editoru nedávej.
 3. Výběr jedné skupiny. Viditelné názvy: Aktuality, Workshopy, Summit, CTRL Run. Hodnoty posílané funkci: `news`, `workshops`, `summit`, `run`.
 4. Tlačítko „Spočítat příjemce“.
-5. Po úspěšném počtu věta „V této skupině je N přihlášených.“ a zaškrtávátko „Odesílám tuto šablonu celé skupině.“ Tlačítko „Odeslat skupině“ je do té doby vypnuté.
+5. Po úspěšném počtu věta „V této skupině je N přihlášených.“ a zaškrtávátko „Odesílám tento mail celé skupině.“ Tlačítko „Odeslat skupině“ je do té doby vypnuté.
 6. Zkušební adresa a tlačítko „Poslat zkoušku“. Zkouška nepotřebuje zaškrtnuté potvrzení hromadného odeslání.
 7. Pod tím seznam posledních odeslání: datum, název šablony, skupina, předmět, režim Zkouška nebo Skupina, počty. E-maily příjemců tam nejsou.
 
-Když člověk změní šablonu nebo skupinu, počet zahoď, zaškrtávátko vypni a „Odeslat skupině“ znovu zablokuj. Tlačítka během requestu zablokuj, ať neodejde druhý klik. Předmět na téhle záložce needituje. Chce-li ho změnit, uloží ho v šabloně.
+Když člověk změní skupinu, počet zahoď, zaškrtávátko vypni a „Odeslat skupině“ znovu zablokuj. Tlačítka během requestu zablokuj, ať neodejde druhý klik. Prázdný předmět, prázdný obsah nebo chybějící `{{unsubscribe_url}}` zkoušku ani odeslání nepustí.
 
 Volání:
 
@@ -219,7 +219,7 @@ Těla:
 { "action": "count", "templateId": "<uuid>", "group": "news" }
 ```
 
-Zkouška je `action: "test"`, `templateId`, `group` a `testEmail`. Skupina je `action: "send"`, `templateId`, `group` a `"confirm": true`. Historie je `{ "action": "history" }`.
+Zkouška je `action: "test"`, `group`, `testEmail`, `subject` a `html`. Skupina je `action: "send"`, `group`, `"confirm": true`, `subject` a `html`. `templateId` je volitelné. Historie je `{ "action": "history" }`. `count` potřebuje jen `group`.
 
 Odpověď `templates` je `{ "ok": true, "templates": [ { "id", "name", "subject", "html", "updated_at" } ] }`. Jiná akce seznam odběratelů nevrací.
 
@@ -378,9 +378,7 @@ Po vytvoření vrať `{ "ok": true, "template": { "id", "name", "subject", "html
 
 ### Odeslání ve funkci
 
-Tři kroky, které admin vidí jako tři tlačítka. `count` jen spočítá. `test` pošle jednomu člověku, který v té skupině je. `send` pošle celé skupině, a jen když prohlížeč poslal `confirm: true`. Obsah mailu si funkce vezme z uložené šablony, ne z toho, co přijde v požadavku.
-
-`count`, `test` a `send` vyžadují `templateId` (UUID existující šablony) a `group` (jedna ze čtyř skupin). HTML ani předmět z těla požadavku nepoužívej. Načti je z řádku šablony.
+Tři kroky, které admin vidí jako tři tlačítka. `count` jen spočítá. `test` pošle jednomu člověku, který v té skupině je. `send` pošle celé skupině, a jen když prohlížeč poslal `confirm: true`. `count` potřebuje jen `group`. `test` a `send` berou `subject` a `html` z těla. HTML vyčisti stejně jako při uložení šablony. `templateId` je volitelné: když přijde, do logu zapiš název té šablony. Když nepřijde, `template_id` je prázdné a `template_name` je `Bez šablony`. HTML z uložené šablony při odeslání nenačítej, editor ho už poslal.
 
 `send` navíc vyžaduje `confirm === true`. Bez toho nic neposílej. `test` vyžaduje `testEmail`: po oříznutí malá písmena, jedno `@`, bez mezer, délka nejvýš 254.
 
@@ -405,11 +403,11 @@ Výběr z `newsletter_subscribers`:
 
 ## Mail
 
-Jak vypadá zpráva, která opravdu odejde. Předmět a HTML jsou z uložené šablony. Jediná věc, která se liší člověk od člověka, je odkaz na odhlášení.
+Jak vypadá zpráva, která opravdu odejde. Předmět a HTML jsou z těla tohohle odeslání. Jediná věc, která se liší člověk od člověka, je odkaz na odhlášení.
 
-Předmět je `subject` uložené šablony. Do předmětu nepřidávej skupinu ani slovo test, pokud to v šabloně není.
+Předmět je `subject` z těla, 1 až 120 znaků. Do předmětu nepřidávej skupinu ani slovo test, pokud to v textu není. Do `newsletter_sends` zapiš předmět, který opravdu odešel.
 
-HTML je uložené HTML té šablony po stejném čištění jako při uložení. Každému příjemci v něm nahraď každou značku `{{unsubscribe_url}}` adresou `{SITE_URL}/newsletter/unsubscribe?token={unsubscribe_token}`. Když je `lang` řádku `en` a viditelný text odkazu je přesně „Odhlásit odběr“, vyměň ho za „Unsubscribe“. Jiný text odkazu, který admin napsal, neměň. Po náhradě musí HTML obsahovat cestu `/newsletter/unsubscribe?token=` a token toho řádku. Když ne, toho příjemce neposílej a započítej ho do `failed`.
+HTML je `html` z těla po stejném čištění jako při uložení šablony. Každému příjemci v něm nahraď každou značku `{{unsubscribe_url}}` adresou `{SITE_URL}/newsletter/unsubscribe?token={unsubscribe_token}`. Když je `lang` řádku `en` a viditelný text odkazu je přesně „Odhlásit odběr“, vyměň ho za „Unsubscribe“. Jiný text odkazu, který admin napsal, neměň. Po náhradě musí HTML obsahovat cestu `/newsletter/unsubscribe?token=` a token toho řádku. Když ne, toho příjemce neposílej a započítej ho do `failed`.
 
 Každý mail má v `to` právě jednoho příjemce. Adresy nedávej do společného `bcc` ani do společného `to`. `from` ber z `RESEND_FROM_EMAIL`, jinak z věty v části **Co už v projektech je**.
 
@@ -426,7 +424,7 @@ Seznam adres a klíč k odesílání nesmí nikdy doputovat do prohlížeče. Kd
 - Stránku a funkci smí použít jen přihlášený profil s `profiles.layer === 'admin'`.
 - `verify_jwt` u `send-newsletter` zůstane `true`.
 - Prohlížeč tabulky `newsletter_subscribers` a `newsletter_templates` nečte přes Supabase klienta. Anon klíč na ně nedostane policy.
-- `count`, `test` a `send` berou obsah z uložené šablony. HTML z těla těchto akcí ignoruj.
+- `count` bere jen skupinu. `test` a `send` berou předmět a HTML z těla a HTML projde stejným čištěním jako šablona. Nečištěné HTML se neodešle.
 - Odpověď odeslání neobsahuje e-mail, token ani seznam příjemců. Výjimka je jen u zkoušky chybový kód `not_in_group`, bez opsání cizích adres.
 - `RESEND_API_KEY` a service role zůstávají v secrets Edge Function. Nesmí být v gitu, v `REACT_APP_` proměnné, v `.env` frontendu ani v Reactu.
 - `send` bez `confirm: true` neodešle skupinu. `count` a `test` skupinu neodešlou.
@@ -515,7 +513,7 @@ Hotovo není, když kód jen přibyl. Hotovo je, když platí všechno v tomhle 
 - `/newsletter` otevře jen profil s `layer` admin. Developer ho v menu nevidí a route ho vrátí na dashboard.
 - V seznamu je šablona Přihlášení k newsletteru se vzhledem mailu po přihlášení na webu: logo, tmavá hlavička, modrý box, dvě tlačítka, v odkazu na odhlášení jen `{{unsubscribe_url}}`.
 - Admin vytvoří další šablonu ze stejného vzhledu, upraví ji ve Vzhledu i v HTML, uloží, znovu otevře a obě podoby sedí. Smazání se zeptá a šablonu odebere.
-- Odeslání používá uloženou šablonu. Bez `{{unsubscribe_url}}` se mail neodešle.
+- Odeslání používá mail složený na záložce Odeslat, ve vzhledu nebo v HTML. Šablona je volitelná a jen ho předvyplní. Bez `{{unsubscribe_url}}` se mail neodešle.
 - Spočítat příjemce ukáže jen číslo přihlášených v jedné skupině. Adresy na stránce nejsou.
 - Zkouška odejde jen na adresu, která v té skupině má `status` subscribed, a má vzhled šablony. Cizí adresa nic neodešle.
 - Odeslat skupině je vypnuté, dokud není čerstvý počet a zaškrtnuté potvrzení. Funkce bez `confirm: true` skupinu neodešle.

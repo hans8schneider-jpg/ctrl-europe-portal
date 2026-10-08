@@ -367,25 +367,10 @@ Deno.serve(async (req) => {
     return json(200, { ok: true, history: data ?? [] }, origin);
   }
 
-  if (!isUuid(body.templateId) || !GROUPS.has(String(body.group))) {
+  if (!GROUPS.has(String(body.group))) {
     return json(400, { error: "invalid" }, origin);
   }
   const group = String(body.group);
-
-  const { data: template, error: templateError } = await supabase
-    .from("newsletter_templates")
-    .select("id, name, subject, html")
-    .eq("id", body.templateId)
-    .maybeSingle();
-  if (templateError) return json(500, { error: "failed" }, origin);
-  if (!template) return json(404, { error: "not_found" }, origin);
-
-  let cleaned = "";
-  try {
-    cleaned = sanitizeHtml(String(template.html ?? ""));
-  } catch {
-    return json(500, { error: "failed" }, origin);
-  }
 
   const subscribers = newsletterClient();
   if (!subscribers) return json(500, { error: "Could not send" }, origin);
@@ -401,8 +386,36 @@ Deno.serve(async (req) => {
     return json(200, { ok: true, count: recipients.length }, origin);
   }
 
+  const subject = cleanText(body.subject, 1, 120);
+  if (!subject || typeof body.html !== "string" || !body.html.trim() || body.html.length > 100000) {
+    return json(400, { error: "invalid" }, origin);
+  }
+
+  let cleaned = "";
+  try {
+    cleaned = sanitizeHtml(body.html);
+  } catch {
+    return json(400, { error: "invalid" }, origin);
+  }
+  if (!cleaned.trim() || cleaned.length > 100000) return json(400, { error: "invalid" }, origin);
+
   if (!cleaned.includes("{{unsubscribe_url}}")) {
     return json(400, { error: "missing_unsubscribe" }, origin);
+  }
+
+  let templateId: string | null = null;
+  let templateName = "Bez šablony";
+  if (body.templateId !== undefined && body.templateId !== null && body.templateId !== "") {
+    if (!isUuid(body.templateId)) return json(400, { error: "invalid" }, origin);
+    const { data: template, error: templateError } = await supabase
+      .from("newsletter_templates")
+      .select("id, name")
+      .eq("id", body.templateId)
+      .maybeSingle();
+    if (templateError) return json(500, { error: "failed" }, origin);
+    if (!template) return json(404, { error: "not_found" }, origin);
+    templateId = template.id;
+    templateName = template.name;
   }
 
   if (action === "test") {
@@ -433,7 +446,7 @@ Deno.serve(async (req) => {
       failed += 1;
       continue;
     }
-    messages.push({ to: recipient.email, subject: template.subject, html });
+    messages.push({ to: recipient.email, subject, html });
   }
 
   const batch = await sendBatches(messages, from, resendKey);
@@ -442,11 +455,11 @@ Deno.serve(async (req) => {
 
   await writeSendLog(supabase, {
     sent_by: userId,
-    template_id: template.id,
-    template_name: template.name,
+    template_id: templateId,
+    template_name: templateName,
     mode: action,
     group_key: group,
-    subject: template.subject,
+    subject,
     recipient_count: action === "test" ? 1 : recipients.length,
     sent_count: sent,
     failed_count: failed,

@@ -6,6 +6,7 @@ import { Sec } from '../components/ui/Sec'
 import {
   NewsletterTemplateEditor,
   WELCOME_TEMPLATE_HTML,
+  WELCOME_TEMPLATE_SUBJECT,
 } from '../components/NewsletterTemplateEditor'
 
 const GROUPS = [
@@ -49,18 +50,15 @@ async function callNewsletter(body) {
   return { error: 'request_failed' }
 }
 
-function previewHtml(html) {
-  return String(html || '').split('{{unsubscribe_url}}').join('#')
-}
-
 function sendFailureText(code) {
-  if (code === 'missing_unsubscribe') return 'V šabloně chybí odkaz pro odhlášení.'
+  if (code === 'missing_unsubscribe') return 'V mailu chybí odkaz pro odhlášení.'
   if (code === 'not_in_group') return 'Tahle adresa v této skupině není přihlášená.'
   return 'Nepodařilo se odeslat. Zkuste to znovu.'
 }
 
 export function NewsletterSendPage() {
   const editorRef = useRef(null)
+  const sendEditorRef = useRef(null)
   const [tab, setTab] = useState('templates')
   const [templates, setTemplates] = useState([])
   const [listLoading, setListLoading] = useState(true)
@@ -70,7 +68,13 @@ export function NewsletterSendPage() {
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState(null)
 
-  const [templateId, setTemplateId] = useState('')
+  const [compose, setCompose] = useState({
+    key: 'start',
+    subject: WELCOME_TEMPLATE_SUBJECT,
+    html: WELCOME_TEMPLATE_HTML,
+    templateId: '',
+  })
+  const [sendDirty, setSendDirty] = useState(false)
   const [group, setGroup] = useState('workshops')
   const [count, setCount] = useState(null)
   const [confirmSend, setConfirmSend] = useState(false)
@@ -120,8 +124,6 @@ export function NewsletterSendPage() {
     if (tab === 'send') loadHistory()
   }, [tab, loadHistory])
 
-  const selected = templates.find((item) => item.id === templateId) || null
-
   const runPending = (action) => {
     if (editorRef.current?.isDirty() || dirty) {
       setPending(() => action)
@@ -158,12 +160,20 @@ export function NewsletterSendPage() {
     })
   }
 
+  const rememberCompose = () => {
+    const snap = sendEditorRef.current?.getSnapshot()
+    if (!snap) return
+    setCompose((prev) => ({ ...prev, subject: snap.subject, html: snap.html }))
+    setSendDirty(false)
+  }
+
   const selectTab = (next) => {
     if (next === tab) return
     if (next === 'send' && (editorRef.current?.isDirty() || dirty)) {
       setPending(() => () => setTab('send'))
       return
     }
+    if (tab === 'send') rememberCompose()
     setPending(null)
     setTab(next)
   }
@@ -234,10 +244,8 @@ export function NewsletterSendPage() {
     setEditorSession(null)
     setDirty(false)
     setMessage({ tone: 'ok', text: 'Šablona smazána.' })
-    if (templateId === editorSession.id) {
-      setTemplateId('')
-      setCount(null)
-      setConfirmSend(false)
+    if (compose.templateId === editorSession.id) {
+      setCompose((prev) => ({ ...prev, templateId: '' }))
     }
   }
 
@@ -260,9 +268,22 @@ export function NewsletterSendPage() {
   }
 
   const changeTemplate = (value) => {
-    setTemplateId(value)
-    setCount(null)
-    setConfirmSend(false)
+    if (!value) {
+      setCompose((prev) => ({ ...prev, templateId: '' }))
+      return
+    }
+    const item = templates.find((row) => row.id === value)
+    if (!item) return
+    if ((sendEditorRef.current?.isDirty() || sendDirty) && !window.confirm('Nahradit rozepsaný mail touto šablonou?')) {
+      return
+    }
+    setCompose({
+      key: `${item.id}-${item.updated_at}-${Date.now()}`,
+      subject: item.subject,
+      html: item.html,
+      templateId: item.id,
+    })
+    setSendDirty(false)
     setSendMessage(null)
   }
 
@@ -273,11 +294,26 @@ export function NewsletterSendPage() {
     setSendMessage(null)
   }
 
+  const mailDraft = () => {
+    const snapshot = sendEditorRef.current?.getSnapshot()
+    const subject = snapshot?.subject.trim() || ''
+    const html = snapshot?.html || ''
+    if (!subject || !html.trim() || subject.length > 120 || html.length > 100000) {
+      setSendMessage({ tone: 'err', text: 'Vyplň předmět a obsah mailu.' })
+      return null
+    }
+    if (!html.includes('{{unsubscribe_url}}')) {
+      setSendMessage({ tone: 'err', text: 'V mailu chybí odkaz pro odhlášení.' })
+      return null
+    }
+    return { subject, html }
+  }
+
   const countRecipients = async () => {
-    if (!templateId || busy) return
+    if (busy) return
     setBusy('count')
     setSendMessage(null)
-    const data = await callNewsletter({ action: 'count', templateId, group })
+    const data = await callNewsletter({ action: 'count', group })
     setBusy(null)
     if (!data?.ok || typeof data.count !== 'number') {
       setCount(null)
@@ -290,14 +326,18 @@ export function NewsletterSendPage() {
   }
 
   const sendTest = async () => {
-    if (!templateId || busy) return
+    if (busy) return
+    const draft = mailDraft()
+    if (!draft) return
     setBusy('test')
     setSendMessage(null)
     const data = await callNewsletter({
       action: 'test',
-      templateId,
       group,
       testEmail,
+      subject: draft.subject,
+      html: draft.html,
+      ...(compose.templateId ? { templateId: compose.templateId } : {}),
     })
     setBusy(null)
     if (data?.error === 'missing_unsubscribe' || data?.error === 'not_in_group' || !data?.ok) {
@@ -313,14 +353,18 @@ export function NewsletterSendPage() {
   }
 
   const sendGroup = async () => {
-    if (!templateId || busy || count === null || !confirmSend) return
+    if (busy || count === null || !confirmSend) return
+    const draft = mailDraft()
+    if (!draft) return
     setBusy('send')
     setSendMessage(null)
     const data = await callNewsletter({
       action: 'send',
-      templateId,
       group,
       confirm: true,
+      subject: draft.subject,
+      html: draft.html,
+      ...(compose.templateId ? { templateId: compose.templateId } : {}),
     })
     setBusy(null)
     if (!data?.ok) {
@@ -421,26 +465,36 @@ export function NewsletterSendPage() {
 
       <div className={tab === 'send' ? '' : 'hidden'}>
         <Sec>Odeslat</Sec>
-        <div className="bg-ctrl-panel border border-ctrl-border p-5 max-[900px]:p-3.5">
-          <label className="block mb-4">
+        <div className="bg-ctrl-panel border border-ctrl-border p-5 mb-4 max-[900px]:p-3.5">
+          <label className="block">
             <span className="block font-mono text-[9px] tracking-[2px] uppercase text-ctrl-text2 mb-1.5">Šablona</span>
-            <select className={inputCls} value={templateId} onChange={(event) => changeTemplate(event.target.value)}>
-              <option value="">Vyber šablonu</option>
+            <select className={inputCls} value={compose.templateId} onChange={(event) => changeTemplate(event.target.value)}>
+              <option value="">Bez šablony</option>
               {templates.map((item) => (
                 <option key={item.id} value={item.id}>{item.name} — {item.subject}</option>
               ))}
             </select>
+            <span className="block mt-2 text-sm text-ctrl-text2">Volitelná. Jen předvyplní mail, poslat jde i bez ní.</span>
           </label>
+        </div>
 
-          {selected && (
-            <iframe
-              title="Náhled šablony"
-              sandbox=""
-              className="w-full h-[480px] mb-4 border border-ctrl-border bg-white"
-              srcDoc={previewHtml(selected.html)}
+        {tab === 'send' && (
+          <div className="mb-4">
+            <NewsletterTemplateEditor
+              key={compose.key}
+              ref={sendEditorRef}
+              compose
+              name=""
+              subject={compose.subject}
+              html={compose.html}
+              canDelete={false}
+              saving={false}
+              onDirtyChange={setSendDirty}
             />
-          )}
+          </div>
+        )}
 
+        <div className="bg-ctrl-panel border border-ctrl-border p-5 max-[900px]:p-3.5">
           <label className="block mb-4">
             <span className="block font-mono text-[9px] tracking-[2px] uppercase text-ctrl-text2 mb-1.5">Skupina</span>
             <select className={inputCls} value={group} onChange={(event) => changeGroup(event.target.value)}>
@@ -450,7 +504,7 @@ export function NewsletterSendPage() {
             </select>
           </label>
 
-          <button type="button" className={secondaryBtnCls} disabled={!templateId || Boolean(busy)} onClick={countRecipients}>
+          <button type="button" className={secondaryBtnCls} disabled={Boolean(busy)} onClick={countRecipients}>
             Spočítat příjemce
           </button>
 
@@ -468,8 +522,8 @@ export function NewsletterSendPage() {
                   onChange={(event) => setConfirmSend(event.target.checked)}
                 />
                 {group === 'all'
-                  ? 'Odesílám tuto šablonu všem skupinám.'
-                  : 'Odesílám tuto šablonu celé skupině.'}
+                  ? 'Odesílám tento mail všem skupinám.'
+                  : 'Odesílám tento mail celé skupině.'}
               </label>
             </div>
           )}
@@ -478,7 +532,7 @@ export function NewsletterSendPage() {
             <button
               type="button"
               className={primaryBtnCls}
-              disabled={!templateId || count === null || !confirmSend || Boolean(busy)}
+              disabled={count === null || !confirmSend || Boolean(busy)}
               onClick={sendGroup}
             >
               Odeslat skupině
@@ -499,7 +553,7 @@ export function NewsletterSendPage() {
             <button
               type="button"
               className={secondaryBtnCls}
-              disabled={!templateId || !testEmail.trim() || Boolean(busy)}
+              disabled={!testEmail.trim() || Boolean(busy)}
               onClick={sendTest}
             >
               Poslat zkoušku

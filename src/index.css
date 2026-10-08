@@ -28,3 +28,121 @@
     border-radius: 2px;
   }
 }
+
+.newsletter-visual {
+  --gjs-left-width: 228px;
+}
+
+.newsletter-visual .gjs-pn-btn {
+  min-width: 40px;
+  min-height: 40px;
+  margin-right: 2px;
+  color: #f4f7fb;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+}
+
+.newsletter-visual .gjs-pn-btn svg {
+  width: 22px;
+  height: 22px;
+  max-width: 22px;
+  display: block;
+}
+
+.newsletter-visual .gjs-pn-btn:hover {
+  background: rgba(255, 255, 255, 0.14);
+  color: #fff;
+}
+
+.newsletter-visual .gjs-pn-btn.gjs-pn-active {
+  background: rgba(42, 107, 255, 0.4);
+  color: #fff;
+}
+
+.newsletter-visual .gjs-pn-btn.is-danger,
+.newsletter-visual .gjs-pn-btn[title='Vymazat plátno'] {
+  color: #ff8fa3;
+}
+
+.newsletter-visual .gjs-pn-btn.is-danger:hover {
+  color: #ffd5de;
+  background: rgba(255, 51, 102, 0.22);
+}
+
+.newsletter-visual .gjs-toolbar {
+  background: #12182b;
+  border-radius: 8px;
+  padding: 4px;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.28);
+}
+
+.newsletter-visual .gjs-toolbar-item {
+  width: 36px;
+  height: 34px;
+  padding: 7px;
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+}
+
+.newsletter-visual .gjs-toolbar-item svg {
+  width: 20px;
+  height: 20px;
+  display: block;
+}
+
+.newsletter-visual .gjs-toolbar-item:hover {
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.newsletter-visual .gjs-toolbar-item:last-child {
+  color: #ff5c7a;
+}
+
+.newsletter-visual .gjs-block-svg {
+  width: 44px;
+}
+
+.newsletter-visual .gjs-block {
+  min-height: 86px;
+  padding: 10px 6px;
+}
+
+.newsletter-visual .gjs-block-label {
+  font-size: 12px;
+  font-family: inherit;
+  white-space: normal;
+  overflow: visible;
+  text-overflow: unset;
+  line-height: 1.25;
+}
+
+.newsletter-visual .gjs-sm-sector-label {
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0;
+}
+
+.newsletter-visual .gjs-sm-sector-title {
+  padding-top: 8px;
+  padding-bottom: 8px;
+}
+
+.newsletter-visual .gjs-clm-header,
+.newsletter-visual .gjs-clm-tags,
+.newsletter-visual .gjs-clm-sels-info {
+  display: none;
+}
+
+.newsletter-visual .gjs-sm-sector-caret,
+.newsletter-visual .gjs-sm-clear,
+.newsletter-visual .gjs-clm-tag-close,
+.newsletter-visual .gjs-sm-layer #gjs-sm-close-layer {
+  width: 18px;
+  height: 18px;
+  min-width: 18px;
+}
